@@ -34,6 +34,10 @@ pytest-cov==5.0.0
 ruff==0.4.10
 black==24.4.2
 
+# others
+python-decouple==3.8
+
+dj-database-url==3.1.2
 
 # sudo docker compose -f docker/docker-compose-dev.yml exec db psql -U oneuptime -d oneuptime -c "\l"  ---> Vérifier l'existence de la BA dans docker
 

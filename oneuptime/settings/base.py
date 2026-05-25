@@ -42,19 +42,6 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'apps.accounts',
     'apps.tenancy',
-    'apps.rbac',
-    'apps.sso',
-    'apps.monitoring',
-    'apps.incidents',
-    'apps.status_pages',
-    'apps.oncall',
-    'apps.telemetry',
-    'apps.workflows',
-    'apps.webhooks',
-    'apps.audit',
-    'apps.retention',
-    'apps.admin_api',
-    'apps.onboarding',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -75,7 +62,7 @@ MIDDLEWARE = [
     # 'core.middleware.TenantMiddleware',
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = 'oneuptime.urls'
 
 TEMPLATES = [
     {
@@ -93,8 +80,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
-ASGI_APPLICATION = 'config.asgi.application'
+WSGI_APPLICATION = 'oneuptime.wsgi.application'
+ASGI_APPLICATION = 'oneuptime.asgi.application'
 
 # ---------------------------------------------------------------------------
 # Database
@@ -222,7 +209,7 @@ EMAIL_BACKEND = config(
     'EMAIL_BACKEND',
     default='django.core.mail.backends.console.EmailBackend'
 )
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@oneuptime.local')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='yaomariussodokin@gmail.com')
 
 # ---------------------------------------------------------------------------
 # Internationalization

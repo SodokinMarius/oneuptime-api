@@ -1,8 +1,11 @@
 """Settings de développement."""
-from .base import *  #
+from .base import *  
 
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+# ---------------------------------------------------------------------------
+# Propre à dev
+# ---------------------------------------------------------------------------
+
 
 # Logs verbeux en dev
 LOGGING = {
