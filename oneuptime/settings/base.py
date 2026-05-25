@@ -86,7 +86,7 @@ ASGI_APPLICATION = 'oneuptime.asgi.application'
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-import dj_database_url  # noqa: E402
+import dj_database_url  
 
 # Note : dj_database_url n'est pas dans requirements.txt par défaut.
 # On va l'ajouter. Pour le moment, parse manuel :
@@ -126,8 +126,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # Sera remplacé par notre classe custom au jour 2
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.accounts.authentication.ActiveVerifiedJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -170,11 +169,16 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'OneUptime API',
     'DESCRIPTION': (
         'OneUptime Enterprise Features — Python/Django PoC.\n\n'
-        'Inspired by the OneUptime Enterprise Implementation Guide v1.0.'
+        'Inspired by the OneUptime Enterprise Implementation Guide v1.0.\n\n'
+        '**Authentification :** cliquez sur **Authorize**, entrez `Bearer <access_token>` '
+        '(ou seulement le token — Swagger ajoute le préfixe Bearer).'
     ),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+    'AUTHENTICATION_WHITELIST': [
+        'apps.accounts.authentication.ActiveVerifiedJWTAuthentication',
+    ],
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'displayOperationId': True,
@@ -182,18 +186,18 @@ SPECTACULAR_SETTINGS = {
     },
     'TAGS': [
         {'name': 'Auth', 'description': 'Authentication and account management'},
-        {'name': 'Tenants', 'description': 'Tenant and project management'},
-        {'name': 'RBAC', 'description': 'Roles, teams, API keys'},
-        {'name': 'Monitoring', 'description': 'Monitors and probes'},
-        {'name': 'Incidents', 'description': 'Incident management'},
-        {'name': 'Status Pages', 'description': 'Public status pages'},
-        {'name': 'On-Call', 'description': 'On-call schedules and alerts'},
-        {'name': 'Telemetry', 'description': 'Logs, metrics, traces'},
-        {'name': 'Workflows', 'description': 'Workflows and scheduled maintenance'},
-        {'name': 'Webhooks', 'description': 'Outbound webhooks'},
-        {'name': 'Audit', 'description': 'Audit log'},
-        {'name': 'Compliance', 'description': 'GDPR and compliance endpoints'},
-        {'name': 'Admin', 'description': 'Super-admin endpoints'},
+        # {'name': 'Tenants', 'description': 'Tenant and project management'},
+        # {'name': 'RBAC', 'description': 'Roles, teams, API keys'},
+        # {'name': 'Monitoring', 'description': 'Monitors and probes'},
+        # {'name': 'Incidents', 'description': 'Incident management'},
+        # {'name': 'Status Pages', 'description': 'Public status pages'},
+        # {'name': 'On-Call', 'description': 'On-call schedules and alerts'},
+        # {'name': 'Telemetry', 'description': 'Logs, metrics, traces'},
+        # {'name': 'Workflows', 'description': 'Workflows and scheduled maintenance'},
+        # {'name': 'Webhooks', 'description': 'Outbound webhooks'},
+        # {'name': 'Audit', 'description': 'Audit log'},
+        # {'name': 'Compliance', 'description': 'GDPR and compliance endpoints'},
+        # {'name': 'Admin', 'description': 'Super-admin endpoints'},
     ],
 }
 
@@ -203,13 +207,32 @@ SPECTACULAR_SETTINGS = {
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
 
 # ---------------------------------------------------------------------------
-# Email
+# Email (SMTP)
 # ---------------------------------------------------------------------------
 EMAIL_BACKEND = config(
     'EMAIL_BACKEND',
-    default='django.core.mail.backends.console.EmailBackend'
+    default='django.core.mail.backends.smtp.EmailBackend',
 )
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='yaomariussodokin@gmail.com')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+EMAIL_FROM_NAME = config('EMAIL_FROM_NAME', default='OneUptime')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
+
+# ---------------------------------------------------------------------------
+# OTP / MFA / Activation
+# ---------------------------------------------------------------------------
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+OTP_LENGTH = config('OTP_LENGTH', default=6, cast=int)
+OTP_EXPIRY_MINUTES = config('OTP_EXPIRY_MINUTES', default=15, cast=int)
+OTP_MAX_ATTEMPTS = config('OTP_MAX_ATTEMPTS', default=5, cast=int)
+MFA_ISSUER_NAME = config('MFA_ISSUER_NAME', default='OneUptime')
+MFA_LOGIN_SESSION_MINUTES = config('MFA_LOGIN_SESSION_MINUTES', default=5, cast=int)
 
 # ---------------------------------------------------------------------------
 # Internationalization

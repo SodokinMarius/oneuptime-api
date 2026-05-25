@@ -8,7 +8,8 @@ from apps.accounts.models import User, UserMembership
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ('email', 'first_name', 'last_name', 'is_active',
-                    'is_staff', 'is_superuser', 'mfa_enabled', 'created_at')
+                    'is_email_verified', 'is_staff', 'is_superuser',
+                    'mfa_enabled', 'created_at')
     list_filter = ('is_active', 'is_staff', 'is_superuser', 'mfa_enabled',
                    'is_erased', 'created_at')
     search_fields = ('email', 'first_name', 'last_name', 'username')

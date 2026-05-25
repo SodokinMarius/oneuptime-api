@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.git/
+.gitignore
+.env
+*.md
+.pytest_cache/
+.coverage
+htmlcov/
+staticfiles/
+backups/
+*.sqlite3
+.cursor/

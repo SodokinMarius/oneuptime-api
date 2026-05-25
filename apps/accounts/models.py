@@ -3,12 +3,12 @@ Accounts app - User and UserMembership models.
 
 Maps to OneUptime document §12 (Authentication) and §19 (Users).
 """
-import hashlib
 import secrets
 import uuid
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -30,11 +30,15 @@ class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
+        extra_fields.setdefault('is_active', False)
+        extra_fields.setdefault('is_email_verified', False)
         return self._create_user(email, password, **extra_fields)
 
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('is_email_verified', True)
         if extra_fields.get('is_staff') is not True:
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get('is_superuser') is not True:
@@ -57,9 +61,11 @@ class User(AbstractUser):
         editable=False,
     )
     email = models.EmailField(unique=True)
+    is_email_verified = models.BooleanField(default=False)
 
     # Compliance fields
     mfa_enabled = models.BooleanField(default=False)
+    mfa_secret = models.CharField(max_length=64, blank=True)
     session_timeout_minutes = models.PositiveIntegerField(default=60)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
 
@@ -146,3 +152,64 @@ class UserMembership(models.Model):
     def generate_invitation_token():
         """Generate a secure URL-safe invitation token."""
         return secrets.token_urlsafe(48)
+
+
+class OtpPurpose(models.TextChoices):
+    ACTIVATION = 'activation', 'Account activation'
+    MFA_LOGIN = 'mfa_login', 'MFA login'
+    PASSWORD_RESET = 'password_reset', 'Password reset'
+
+
+class OtpChallenge(models.Model):
+    """One-time password challenge (email OTP)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='otp_challenges',
+    )
+    purpose = models.CharField(max_length=32, choices=OtpPurpose.choices)
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'accounts_otp_challenge'
+        indexes = [
+            models.Index(fields=['user', 'purpose', '-created_at']),
+        ]
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_consumed(self):
+        return self.consumed_at is not None
+
+
+class MfaLoginSession(models.Model):
+    """Temporary session between password login and MFA verification."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='mfa_login_sessions',
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'accounts_mfa_login_session'
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_consumed(self):
+        return self.consumed_at is not None

@@ -128,11 +128,12 @@ git-init: ## Initialize git repository with first commit
 # DATABASE (Docker)
 # =============================================================================
 
-db-up: ## Start PostgreSQL container (dev)
-	$(COMPOSE_DEV) up -d
-	@echo "⏳ Waiting for database to be ready..."
-	@sleep 3
-	@$(COMPOSE_DEV) exec -T db pg_isready -U $(POSTGRES_USER) >/dev/null 2>&1 && echo "✅ Database is ready." || echo "⚠️  Database may not be ready yet."
+db-up: ## Start PostgreSQL + web app containers (dev)
+	$(COMPOSE_DEV) up -d --build
+	@echo "⏳ Waiting for services..."
+	@sleep 5
+	@$(COMPOSE_DEV) exec -T db pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1 && echo "✅ Database is ready." || echo "⚠️  Database may not be ready yet."
+	@echo "✅ Web API: http://localhost:$${WEB_PORT:-8000}"
 
 db-down: ## Stop PostgreSQL container
 	$(COMPOSE_DEV) down
@@ -217,8 +218,10 @@ migrations-reset: ## ⚠️  Delete all migrations files and recreate (use only 
 # DJANGO
 # =============================================================================
 
-run: ## Run development server on http://localhost:8000
+run: ## Run development server locally on http://localhost:8000
 	python manage.py runserver
+
+docker-dev: db-up ## Alias: start full dev stack in Docker (db + web)
 
 shell: ## Open Django shell (with auto-imports via shell_plus if available)
 	@python manage.py shell_plus 2>/dev/null || python manage.py shell
@@ -231,6 +234,9 @@ collectstatic: ## Collect static files (for production)
 
 check: ## Run Django's system check
 	python manage.py check
+
+test-email: ## Send a test HTML email (EMAIL=addr optional)
+	python manage.py send_test_email $(EMAIL)
 
 startapp: ## Create a new app under apps/ (use NAME=appname)
 	@if [ -z "$(NAME)" ]; then \

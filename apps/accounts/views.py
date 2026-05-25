@@ -1,31 +1,41 @@
-from django.shortcuts import render
-
-# Create your views here.
 """
 Views for accounts app - authentication and user management.
 """
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import generics, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from apps.accounts.models import UserMembership
+from apps.accounts.models import OtpPurpose, UserMembership
 from apps.accounts.serializers import (
+    ActivateAccountSerializer,
     ChangePasswordSerializer,
     InviteUserSerializer,
     LoginSerializer,
+    MfaDisableSerializer,
+    MfaSetupConfirmSerializer,
+    MfaVerifyLoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     RegisterSerializer,
+    ResendActivationSerializer,
     UserMembershipSerializer,
     UserSerializer,
     UserUpdateSerializer,
 )
+from apps.accounts.exceptions import OtpError
+from apps.accounts.services.email import AuthEmailService
+from apps.accounts.services.mfa import MfaService
 from apps.accounts.services.onboarding import OnboardingService
+from apps.accounts.services.otp import OtpService
+from apps.accounts.utils import otp_error_response
 
 User = get_user_model()
 
@@ -74,8 +84,11 @@ class RegisterView(APIView):
             last_name=serializer.validated_data.get('last_name', ''),
         )
 
-        tokens = _issue_tokens(user)
+        _, code = OtpService.create_challenge(user, OtpPurpose.ACTIVATION)
+        AuthEmailService.send_activation_otp(user.email, code)
+
         return Response({
+            'detail': 'Account created. Check your email for the activation OTP.',
             'user': UserSerializer(user).data,
             'tenant': {
                 'id': str(tenant.id),
@@ -87,7 +100,6 @@ class RegisterView(APIView):
                 'name': project.name,
                 'slug': project.slug,
             },
-            **tokens,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -112,6 +124,16 @@ class LoginView(APIView):
         user.last_login_ip = _client_ip(request)
         user.save(update_fields=['last_login', 'last_login_ip'])
 
+        if user.mfa_enabled:
+            session = MfaService.create_login_session(user)
+            return Response({
+                'mfa_required': True,
+                'mfa_token': session.token,
+                'expires_in': int(
+                    (session.expires_at - timezone.now()).total_seconds()
+                ),
+            })
+
         tokens = _issue_tokens(user)
         return Response({
             'user': UserSerializer(user).data,
@@ -119,32 +141,277 @@ class LoginView(APIView):
         })
 
 
-class RefreshView(APIView):
-    """Exchange a refresh token for a new access token."""
+class ActivateAccountView(APIView):
+    """Verify email OTP and activate account."""
     permission_classes = [AllowAny]
+    serializer_class = ActivateAccountSerializer
 
     @extend_schema(
         tags=['Auth'],
-        request={'application/json': {'type': 'object',
-                                       'properties': {'refresh': {'type': 'string'}},
-                                       'required': ['refresh']}},
-        responses={200: OpenApiResponse(description='New access token')},
-        summary='Refresh JWT access token',
+        request=ActivateAccountSerializer,
+        responses={200: OpenApiResponse(description='Account activated, returns tokens')},
+        summary='Activate account with email OTP',
     )
     def post(self, request):
-        token = request.data.get('refresh')
-        if not token:
-            return Response({'detail': 'Refresh token required.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        serializer = ActivateAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        code = serializer.validated_data['code']
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {'detail': 'Invalid email or OTP code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if user.is_email_verified:
+            return Response({'detail': 'Account is already activated.'})
+
         try:
-            refresh = RefreshToken(token)
-            return Response({
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),  # rotated
-            })
-        except TokenError as e:
-            return Response({'detail': str(e)},
-                            status=status.HTTP_401_UNAUTHORIZED)
+            OtpService.verify(user, OtpPurpose.ACTIVATION, code)
+        except OtpError as exc:
+            return otp_error_response(exc)
+
+        user.is_active = True
+        user.is_email_verified = True
+        user.save(update_fields=['is_active', 'is_email_verified'])
+
+        tokens = _issue_tokens(user)
+        return Response({
+            'detail': 'Account activated successfully.',
+            'user': UserSerializer(user).data,
+            **tokens,
+        })
+
+
+class ResendActivationView(APIView):
+    """Resend activation OTP email."""
+    permission_classes = [AllowAny]
+    serializer_class = ResendActivationSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=ResendActivationSerializer,
+        responses={200: OpenApiResponse(description='OTP sent if account exists')},
+        summary='Resend activation OTP',
+    )
+    def post(self, request):
+        serializer = ResendActivationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        user = User.objects.filter(email=email, is_email_verified=False).first()
+        if user:
+            _, code = OtpService.create_challenge(user, OtpPurpose.ACTIVATION)
+            AuthEmailService.send_activation_otp(user.email, code)
+
+        return Response({
+            'detail': (
+                'Si un compte non vérifié existe, un nouveau code a été envoyé. '
+                'Les anciens codes sont invalidés.'
+            ),
+        })
+
+
+class MfaVerifyLoginView(APIView):
+    """Complete login after MFA (TOTP)."""
+    permission_classes = [AllowAny]
+    serializer_class = MfaVerifyLoginSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=MfaVerifyLoginSerializer,
+        responses={200: OpenApiResponse(description='Login complete, returns tokens')},
+        summary='Verify MFA and receive JWT tokens',
+    )
+    def post(self, request):
+        serializer = MfaVerifyLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            session = MfaService.consume_login_session(
+                serializer.validated_data['mfa_token']
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = session.user
+        if not MfaService.verify_code(
+            user.mfa_secret,
+            serializer.validated_data['code'],
+        ):
+            return Response(
+                {'detail': 'Invalid MFA code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.last_login = timezone.now()
+        user.last_login_ip = _client_ip(request)
+        user.save(update_fields=['last_login', 'last_login_ip'])
+
+        tokens = _issue_tokens(user)
+        return Response({
+            'user': UserSerializer(user).data,
+            **tokens,
+        })
+
+
+class MfaSetupView(APIView):
+    """Start MFA setup — returns TOTP secret and provisioning URI."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Auth'],
+        responses={200: OpenApiResponse(description='MFA setup data')},
+        summary='Start MFA (TOTP) setup',
+    )
+    def post(self, request):
+        secret = MfaService.generate_secret()
+        request.user.mfa_secret = secret
+        request.user.mfa_enabled = False
+        request.user.save(update_fields=['mfa_secret', 'mfa_enabled'])
+
+        return Response({
+            'secret': secret,
+            'provisioning_uri': MfaService.provisioning_uri(request.user, secret),
+        })
+
+
+class MfaConfirmView(APIView):
+    """Confirm MFA setup with a valid TOTP code."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = MfaSetupConfirmSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=MfaSetupConfirmSerializer,
+        responses={200: OpenApiResponse(description='MFA enabled')},
+        summary='Confirm MFA setup',
+    )
+    def post(self, request):
+        serializer = MfaSetupConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not request.user.mfa_secret:
+            return Response(
+                {'detail': 'Call /auth/mfa/setup first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not MfaService.verify_code(
+            request.user.mfa_secret,
+            serializer.validated_data['code'],
+        ):
+            return Response(
+                {'detail': 'Invalid MFA code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.mfa_enabled = True
+        request.user.save(update_fields=['mfa_enabled'])
+        return Response({'detail': 'MFA enabled successfully.'})
+
+
+class MfaDisableView(APIView):
+    """Disable MFA (requires password + current TOTP)."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = MfaDisableSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=MfaDisableSerializer,
+        responses={204: OpenApiResponse(description='MFA disabled')},
+        summary='Disable MFA',
+    )
+    def post(self, request):
+        serializer = MfaDisableSerializer(
+            data=request.data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        if not MfaService.verify_code(
+            request.user.mfa_secret,
+            serializer.validated_data['code'],
+        ):
+            return Response(
+                {'detail': 'Invalid MFA code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.mfa_enabled = False
+        request.user.mfa_secret = ''
+        request.user.save(update_fields=['mfa_enabled', 'mfa_secret'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PasswordResetRequestView(APIView):
+    """Request password reset OTP by email."""
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetRequestSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=PasswordResetRequestSerializer,
+        responses={200: OpenApiResponse(description='OTP sent if account exists')},
+        summary='Request password reset OTP',
+    )
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        user = User.objects.filter(email=email, is_active=True).first()
+        if user:
+            _, code = OtpService.create_challenge(user, OtpPurpose.PASSWORD_RESET)
+            AuthEmailService.send_password_reset_otp(user.email, code)
+
+        return Response({
+            'detail': 'If the account exists, a reset OTP has been sent.',
+        })
+
+
+class PasswordResetConfirmView(APIView):
+    """Reset password using OTP."""
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=PasswordResetConfirmSerializer,
+        responses={204: OpenApiResponse(description='Password reset')},
+        summary='Confirm password reset with OTP',
+    )
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        code = serializer.validated_data['code']
+        new_password = serializer.validated_data['new_password']
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {'detail': 'Invalid email or OTP code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            OtpService.verify(user, OtpPurpose.PASSWORD_RESET, code)
+        except OtpError as exc:
+            return otp_error_response(exc)
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password reset successfully.'})
+
+
+class RefreshView(TokenRefreshView):
+    """Exchange a refresh token for a new access + refresh pair (rotation)."""
+    permission_classes = [AllowAny]
+
+
+class TokenVerifyAPIView(TokenVerifyView):
+    """Verify that an access or refresh token is valid."""
+    permission_classes = [AllowAny]
 
 
 class LogoutView(APIView):

@@ -12,10 +12,31 @@ services:
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: oneuptime-web-dev
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ..:/app
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_SETTINGS_MODULE: oneuptime.settings.dev
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata_dev:

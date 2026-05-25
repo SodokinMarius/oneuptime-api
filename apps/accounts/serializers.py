@@ -16,10 +16,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'is_active', 'mfa_enabled', 'session_timeout_minutes',
+            'is_active', 'is_email_verified', 'mfa_enabled',
+            'session_timeout_minutes', 'created_at', 'updated_at',
+        )
+        read_only_fields = (
+            'id', 'email', 'is_active', 'is_email_verified',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'email', 'is_active', 'created_at', 'updated_at')
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -56,9 +59,17 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
+        email = attrs['email'].lower()
+        pending = User.objects.filter(email=email, is_email_verified=False).exists()
+        if pending:
+            raise serializers.ValidationError(
+                "Please activate your account via the email OTP.",
+                code='account_not_activated',
+            )
+
         user = authenticate(
             request=self.context.get('request'),
-            username=attrs['email'].lower(),
+            username=email,
             password=attrs['password'],
         )
         if not user:
@@ -73,6 +84,68 @@ class LoginSerializer(serializers.Serializer):
             )
         attrs['user'] = user
         return attrs
+
+
+class ActivateAccountSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=4, max_length=8)
+
+    def validate_email(self, value):
+        return value.lower()
+
+
+class ResendActivationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.lower()
+
+
+class MfaVerifyLoginSerializer(serializers.Serializer):
+    mfa_token = serializers.CharField()
+    code = serializers.CharField(min_length=6, max_length=8)
+
+
+class MfaSetupConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField(min_length=6, max_length=8)
+
+
+class MfaDisableSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
+    code = serializers.CharField(min_length=6, max_length=8)
+
+    def validate_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Password is incorrect.')
+        return value
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.lower()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=4, max_length=8)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_email(self, value):
+        return value.lower()
+
+    def validate_new_password(self, value):
+        try:
+            password_validation.validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+
+class TokenVerifySerializer(serializers.Serializer):
+    token = serializers.CharField()
 
 
 class ChangePasswordSerializer(serializers.Serializer):
