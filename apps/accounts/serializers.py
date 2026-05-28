@@ -174,8 +174,28 @@ class InviteUserSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
 
 
+class AcceptInviteSerializer(serializers.Serializer):
+    """Accept an invitation to join a tenant."""
+    token = serializers.CharField()
+    email = serializers.EmailField()
+    # Password is required only for new users who don't have one yet
+    password = serializers.CharField(write_only=True, min_length=8, required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        return value.lower()
+
+    def validate_password(self, value):
+        if value:
+            try:
+                password_validation.validate_password(value)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(list(e.messages))
+        return value
+
+
 class UserMembershipSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    is_accepted = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = UserMembership

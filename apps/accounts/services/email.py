@@ -103,3 +103,38 @@ class AuthEmailService:
             context=context,
             plain_fallback=plain,
         )
+
+    @classmethod
+    def send_invitation(
+        cls,
+        *,
+        email: str,
+        tenant_name: str,
+        inviter_name: str,
+        invitation_token: str,
+        expiry_days: int = 7,
+    ) -> None:
+        invitation_url = (
+            f'{settings.FRONTEND_URL}/accept-invite'
+            f'?token={quote(invitation_token)}&email={quote(email)}'
+        )
+        context = {
+            **cls._base_context(email),
+            'tenant_name': tenant_name,
+            'inviter_name': inviter_name or 'Un administrateur',
+            'invitation_url': invitation_url,
+            'expiry_days': expiry_days,
+        }
+        plain = (
+            f'Invitation {context["brand_name"]}\n\n'
+            f'{context["inviter_name"]} vous invite à rejoindre {tenant_name}.\n\n'
+            f'Lien : {invitation_url}\n'
+            f'Expire dans {expiry_days} jours.'
+        )
+        cls._send_html_email(
+            to=email,
+            subject=f'[{context["brand_name"]}] Invitation à rejoindre {tenant_name}',
+            template_name='emails/invitation.html',
+            context=context,
+            plain_fallback=plain,
+        )

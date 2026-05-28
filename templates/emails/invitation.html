@@ -1,0 +1,30 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Invitation — {{ brand_name }}{% endblock %}
+
+{% block content %}
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">
+  Vous êtes invité
+</h2>
+<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#475569;">
+  <strong>{{ inviter_name }}</strong> vous a invité à rejoindre l'organisation
+  <strong>{{ tenant_name }}</strong> sur {{ brand_name }}.
+</p>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#64748b;">
+  Cliquez sur le bouton ci-dessous pour accepter l'invitation. Ce lien expire dans
+  {{ expiry_days }} jours.
+</p>
+<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+  <tr>
+    <td style="border-radius:8px;background:linear-gradient(135deg,#4f46e5,#2563eb);">
+      <a href="{{ invitation_url }}"
+         style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+        Accepter l'invitation
+      </a>
+    </td>
+  </tr>
+</table>
+<p style="margin:0;font-size:12px;color:#94a3b8;word-break:break-all;">
+  Lien direct : {{ invitation_url }}
+</p>
+{% endblock %}

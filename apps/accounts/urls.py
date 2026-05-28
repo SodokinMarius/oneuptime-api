@@ -3,8 +3,10 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from apps.accounts.views import (
+    AcceptInviteView,
     ActivateAccountView,
     ChangePasswordView,
+    EraseMyAccountView,
     LoginView,
     LogoutView,
     MeView,
@@ -29,6 +31,7 @@ urlpatterns = [
     path('auth/register', RegisterView.as_view(), name='register'),
     path('auth/activate', ActivateAccountView.as_view(), name='activate'),
     path('auth/resend-activation', ResendActivationView.as_view(), name='resend-activation'),
+    path('auth/accept-invite', AcceptInviteView.as_view(), name='accept-invite'),
 
     # Auth — JWT
     path('auth/login', LoginView.as_view(), name='login'),
@@ -53,6 +56,7 @@ urlpatterns = [
 
     # Profile
     path('auth/me', MeView.as_view(), name='me'),
+    path('auth/erase-account', EraseMyAccountView.as_view(), name='erase-account'),
 
     # Users
     path('', include(router.urls)),

@@ -8,3 +8,4 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         import apps.accounts.schema  # noqa: F401 — register OpenAPI JWT scheme
+        import core.spectacular  # noqa: F401 — register UnifiedTokenAuthentication OpenAPI extension

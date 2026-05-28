@@ -4,7 +4,7 @@ Views for accounts app - authentication and user management.
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +15,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from apps.accounts.models import OtpPurpose, UserMembership
 from apps.accounts.serializers import (
+    AcceptInviteSerializer,
     ActivateAccountSerializer,
     ChangePasswordSerializer,
     InviteUserSerializer,
@@ -256,13 +257,19 @@ class MfaVerifyLoginView(APIView):
         })
 
 
+class MfaSetupResponseSerializer(serializers.Serializer):
+    secret = serializers.CharField()
+    provisioning_uri = serializers.CharField()
+
+
 class MfaSetupView(APIView):
     """Start MFA setup — returns TOTP secret and provisioning URI."""
     permission_classes = [IsAuthenticated]
+    serializer_class = MfaSetupResponseSerializer
 
     @extend_schema(
         tags=['Auth'],
-        responses={200: OpenApiResponse(description='MFA setup data')},
+        responses={200: MfaSetupResponseSerializer},
         summary='Start MFA (TOTP) setup',
     )
     def post(self, request):
@@ -404,6 +411,80 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': 'Password reset successfully.'})
 
 
+class AcceptInviteView(APIView):
+    """
+    Accept a tenant invitation via the token sent by email.
+
+    - If the invited user already has a password (existing user), they just need to supply
+      the token + email and will receive JWT tokens immediately.
+    - If the user was created without a password (new invitee), they must also provide a
+      password to set on first access.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = AcceptInviteSerializer
+
+    @extend_schema(
+        tags=['Auth'],
+        request=AcceptInviteSerializer,
+        responses={200: OpenApiResponse(description='Invitation accepted, returns tokens')},
+        summary='Accept a tenant invitation',
+    )
+    def post(self, request):
+        serializer = AcceptInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+        email = serializer.validated_data['email']
+        password = serializer.validated_data.get('password', '')
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {'detail': 'Invalid invitation token or email.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        membership = UserMembership.objects.filter(
+            user=user,
+            invitation_token=token,
+            accepted_at__isnull=True,
+        ).select_related('tenant').first()
+
+        if not membership:
+            return Response(
+                {'detail': 'Invalid or already-accepted invitation token.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # New users (no usable password) must set one now
+        if not user.has_usable_password():
+            if not password:
+                return Response(
+                    {'detail': 'Please provide a password to complete your registration.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(password)
+            user.is_active = True
+            user.is_email_verified = True
+            user.save(update_fields=['password', 'is_active', 'is_email_verified'])
+
+        membership.accepted_at = timezone.now()
+        membership.invitation_token = ''
+        membership.save(update_fields=['accepted_at', 'invitation_token', 'updated_at'])
+
+        tokens = _issue_tokens(user)
+        return Response({
+            'detail': 'Invitation accepted.',
+            'user': UserSerializer(user).data,
+            'tenant': {
+                'id': str(membership.tenant.id),
+                'name': membership.tenant.name,
+                'slug': membership.tenant.slug,
+            },
+            **tokens,
+        })
+
+
 class RefreshView(TokenRefreshView):
     """Exchange a refresh token for a new access + refresh pair (rotation)."""
     permission_classes = [AllowAny]
@@ -494,6 +575,65 @@ class ChangePasswordView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class EraseMyAccountView(APIView):
+    """
+    GDPR right to erasure — pseudonymize the current user's personal data.
+
+    The account is not hard-deleted (for audit log integrity) but all personally
+    identifiable information is replaced with anonymized placeholders and the
+    user is permanently deactivated.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Auth'],
+        request={'application/json': {
+            'type': 'object',
+            'required': ['password'],
+            'properties': {'password': {'type': 'string'}},
+        }},
+        responses={204: OpenApiResponse(description='Account erased')},
+        summary='GDPR — Erase (pseudonymize) current account',
+    )
+    def post(self, request):
+        password = request.data.get('password', '')
+        if not request.user.check_password(password):
+            return Response(
+                {'detail': 'Password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        anon_id = user.id.hex[:8]
+
+        user.first_name = 'Deleted'
+        user.last_name = 'User'
+        user.email = f'erased_{anon_id}@deleted.invalid'
+        user.username = f'erased_{anon_id}'
+        user.is_active = False
+        user.is_erased = True
+        user.erased_at = timezone.now()
+        user.mfa_secret = ''
+        user.mfa_enabled = False
+        user.set_unusable_password()
+        user.save(update_fields=[
+            'first_name', 'last_name', 'email', 'username',
+            'is_active', 'is_erased', 'erased_at',
+            'mfa_secret', 'mfa_enabled', 'password',
+        ])
+
+        # Blacklist the current token if provided
+        refresh_token = request.data.get('refresh')
+        if refresh_token:
+            try:
+                from rest_framework_simplejwt.tokens import RefreshToken as RT
+                RT(refresh_token).blacklist()
+            except Exception:
+                pass
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # ---------------------------------------------------------------------------
 # Users management endpoints
 # ---------------------------------------------------------------------------
@@ -502,6 +642,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """List and retrieve users in the current tenant."""
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    lookup_field = "pk"
+    lookup_value_regex = "[0-9a-f-]+"
 
     def get_queryset(self):
         """Return users that share a tenant with the current user."""
@@ -575,7 +717,24 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # TODO: send email with invitation_token (Day 4)
+        inviter_name = request.user.get_full_name() or request.user.email
+        try:
+            AuthEmailService.send_invitation(
+                email=email,
+                tenant_name=tenant.name,
+                inviter_name=inviter_name,
+                invitation_token=invitation.invitation_token,
+            )
+        except Exception:
+            return Response(
+                {
+                    'detail': 'Invitation created but email could not be sent. '
+                    'Check SMTP settings.',
+                    'membership': UserMembershipSerializer(invitation).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
         return Response(
             UserMembershipSerializer(invitation).data,
             status=status.HTTP_201_CREATED,

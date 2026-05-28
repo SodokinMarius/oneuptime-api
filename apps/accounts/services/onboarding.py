@@ -9,6 +9,7 @@ from django.utils.text import slugify
 
 from apps.accounts.models import UserMembership, User
 from apps.tenancy.models import Project, Tenant
+from apps.rbac.services import bootstrap_project
 
 User = get_user_model()
 
@@ -63,8 +64,11 @@ class OnboardingService:
             user=user,
             tenant=tenant,
             is_owner=True,
-            accepted_at=user.created_at,  
+            accepted_at=user.created_at,
         )
+
+        # 5. Bootstrap project: system roles, incident states/severities, default probes
+        bootstrap_project(project, tenant)
 
         return user, tenant, project
 

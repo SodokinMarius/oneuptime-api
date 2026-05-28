@@ -30,4 +30,13 @@ urlpatterns = [
 
     # Apps
     path('api/v1/', include('apps.accounts.urls')),
+    path('api/v1/', include('apps.rbac.urls')),
+    path('api/v1/', include('apps.monitoring.urls')),
+    path('api/v1/', include('apps.incidents.urls')),
+    path('api/v1/', include('apps.maintenance.urls')),
+    path('api/v1/', include('apps.webhooks.urls')),
+    path('api/v1/', include('apps.tenancy.urls')),
+    path('api/v1/', include('apps.audit.urls')),
+    path('api/v1/', include('apps.status_pages.urls')),
+    path('api/v1/', include('apps.admin_api.urls')),
 ]

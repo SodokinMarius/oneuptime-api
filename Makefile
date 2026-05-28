@@ -37,7 +37,7 @@ TIMESTAMP  := $(shell date +%Y%m%d_%H%M%S)
         clean clean-pyc clean-all \
         docker-build docker-up docker-down docker-logs docker-shell \
         deploy-vps \
-        doctor audit-verify run-checks \
+        doctor audit-verify run-checks run-scheduler scheduler-logs \
         env env-check git-init
 
 # =============================================================================
@@ -73,7 +73,7 @@ help: ## Show this help message
 	@grep -E '^(docker-build|docker-up|docker-down|docker-logs|docker-shell):.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  🔧 Tools"
-	@grep -E '^(doctor|audit-verify|run-checks|deploy-vps):.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[36m%-22s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^(doctor|audit-verify|run-checks|run-scheduler|scheduler-logs|deploy-vps):.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  🧹 Cleanup"
 	@grep -E '^(clean|clean-pyc|clean-all):.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[36m%-22s\033[0m %s\n", $$1, $$2}'
@@ -337,6 +337,12 @@ audit-verify: ## Verify the integrity of the audit log hash chain
 
 run-checks: ## Run pending monitor checks (manual trigger)
 	python manage.py run_checks
+
+run-scheduler: ## Run background scheduler locally (checks, maintenance, webhooks, purge)
+	python manage.py run_scheduler
+
+scheduler-logs: ## Follow scheduler container logs (Docker dev stack)
+	$(COMPOSE_DEV) logs -f scheduler
 
 deploy-vps: ## Deploy to VPS (set VPS_HOST in .env)
 	@if [ -z "$$(grep VPS_HOST .env 2>/dev/null | cut -d= -f2)" ]; then \

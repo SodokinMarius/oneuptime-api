@@ -40,8 +40,17 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'apps.scheduler',
     'apps.accounts',
     'apps.tenancy',
+    'apps.rbac',
+    'apps.monitoring',
+    'apps.incidents',
+    'apps.status_pages',
+    'apps.maintenance',
+    'apps.webhooks',
+    'apps.audit',
+    'apps.admin_api',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -58,8 +67,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Custom — sera ajouté au jour 3
-    # 'core.middleware.TenantMiddleware',
+    'core.middleware.TenantMiddleware',
+    'core.middleware.ProjectMiddleware',
+    'core.middleware.RateLimitMiddleware',
 ]
 
 ROOT_URLCONF = 'oneuptime.urls'
@@ -126,7 +136,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'apps.accounts.authentication.ActiveVerifiedJWTAuthentication',
+        'apps.accounts.authentication.UnifiedTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -177,7 +187,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'AUTHENTICATION_WHITELIST': [
-        'apps.accounts.authentication.ActiveVerifiedJWTAuthentication',
+        'apps.accounts.authentication.UnifiedTokenAuthentication',
     ],
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
