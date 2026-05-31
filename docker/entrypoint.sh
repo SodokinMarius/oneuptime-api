@@ -31,5 +31,11 @@ PY
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# collectstatic uniquement en production (DEBUG=False)
+if [ "${DJANGO_SETTINGS_MODULE}" = "oneuptime.settings.prod" ]; then
+    echo "Collecting static files..."
+    python manage.py collectstatic --noinput --clear
+fi
+
 echo "Starting application..."
 exec "$@"

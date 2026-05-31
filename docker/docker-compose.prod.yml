@@ -1,0 +1,135 @@
+services:
+
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: oneuptime-db-prod
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Pas de port exposé en dehors du réseau interne
+    networks:
+      - internal
+
+  # ─── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: oneuptime-redis-prod
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redis_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  # ─── Django / Gunicorn ─────────────────────────────────────────────────────
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: oneuptime-web-prod
+    restart: always
+    command: >
+      gunicorn oneuptime.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers ${GUNICORN_WORKERS:-3}
+        --timeout ${GUNICORN_TIMEOUT:-30}
+        --access-logfile -
+        --error-logfile -
+        --log-level info
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_SETTINGS_MODULE: oneuptime.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL:    redis://redis:6379/0
+    volumes:
+      - static_prod:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    # Pas de port exposé directement — passe par Nginx
+
+  # ─── Scheduler (jobs en arrière-plan) ─────────────────────────────────────
+  scheduler:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: oneuptime-scheduler-prod
+    restart: always
+    command: python manage.py run_scheduler
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_SETTINGS_MODULE: oneuptime.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL:    redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - internal
+
+  # ─── Nginx ─────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: oneuptime-nginx-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_prod:/app/staticfiles:ro
+      - certs_prod:/etc/nginx/certs:ro  # Monter ici vos certificats TLS
+    depends_on:
+      - web
+    networks:
+      - internal
+      - external
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata_prod:
+    name: oneuptime_pgdata_prod
+  redis_prod:
+    name: oneuptime_redis_prod
+  static_prod:
+    name: oneuptime_static_prod
+  certs_prod:
+    name: oneuptime_certs_prod
+
+networks:
+  internal:
+    driver: bridge
+    internal: true   # Réseau privé — pas d'accès internet direct sauf Nginx
+  external:
+    driver: bridge

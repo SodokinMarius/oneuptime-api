@@ -94,6 +94,34 @@ WSGI_APPLICATION = 'oneuptime.wsgi.application'
 ASGI_APPLICATION = 'oneuptime.asgi.application'
 
 # ---------------------------------------------------------------------------
+# Cache — Redis si REDIS_URL défini, sinon LocMemCache (dev uniquement)
+# ---------------------------------------------------------------------------
+_REDIS_URL = config('REDIS_URL', default='')
+
+if _REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'IGNORE_EXCEPTIONS': True,  # dégrade gracieusement si Redis est down
+            },
+            'KEY_PREFIX': 'oneuptime',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'oneuptime-dev',
+        }
+    }
+
+# ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
 import dj_database_url  
@@ -142,7 +170,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CreatedAtCursorPagination',
     'PAGE_SIZE': 50,
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',
@@ -180,8 +208,10 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': (
         'OneUptime Enterprise Features — Python/Django PoC.\n\n'
         'Inspired by the OneUptime Enterprise Implementation Guide v1.0.\n\n'
-        '**Authentification :** cliquez sur **Authorize**, entrez `Bearer <access_token>` '
-        '(ou seulement le token — Swagger ajoute le préfixe Bearer).'
+        '**Authentification :** cliquez sur **Authorize**, puis renseignez :\n'
+        '- `bearerAuth` → votre access token JWT\n'
+        '- `tenantId` → l\'UUID du tenant (`tenant.id` retourné par `/auth/me`)\n'
+        '- `projectId` → l\'UUID du projet (`default_project.id` retourné par `/auth/me`)'
     ),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
@@ -189,6 +219,31 @@ SPECTACULAR_SETTINGS = {
     'AUTHENTICATION_WHITELIST': [
         'apps.accounts.authentication.UnifiedTokenAuthentication',
     ],
+    'SECURITY': [
+        {'bearerAuth': [], 'tenantId': [], 'projectId': []},
+    ],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'Token JWT obtenu via POST /auth/login',
+            },
+            'tenantId': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'X-Tenant-Id',
+                'description': 'UUID du tenant — récupéré via GET /auth/me → tenant.id',
+            },
+            'projectId': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'X-Project-Id',
+                'description': 'UUID du projet — récupéré via GET /auth/me → default_project.id',
+            },
+        },
+    },
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'displayOperationId': True,

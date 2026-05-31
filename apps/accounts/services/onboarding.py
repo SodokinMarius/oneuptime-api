@@ -68,7 +68,22 @@ class OnboardingService:
         )
 
         # 5. Bootstrap project: system roles, incident states/severities, default probes
-        bootstrap_project(project, tenant)
+        bootstrapped = bootstrap_project(project, tenant)
+
+        # 6. Auto-assign founder to Admin team with the admin role
+        from apps.rbac.models import Team, TeamMembership
+        admin_role = bootstrapped['roles'].get('admin')
+        if admin_role:
+            admin_team, _ = Team.objects.get_or_create(
+                project=project,
+                name='Administrators',
+                defaults={'tenant': tenant, 'description': 'Project owners and administrators'},
+            )
+            TeamMembership.objects.get_or_create(
+                team=admin_team,
+                user=user,
+                defaults={'role': admin_role, 'granted_by': user},
+            )
 
         return user, tenant, project
 

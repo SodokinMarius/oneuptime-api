@@ -83,7 +83,7 @@ help: ## Show this help message
 # SETUP & INSTALL
 # =============================================================================
 
-install: ## Install Python dependencies (production)
+install: ## Install python3 dependencies (production)
 	pip install -r requirements.txt
 
 install-dev: ## Install dev dependencies (tests, lint)
@@ -99,7 +99,7 @@ env: ## Copy .env.example to .env if .env doesn't exist
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
 		echo "✅ .env created from .env.example."; \
-		echo "⚠️  Remember to set DJANGO_SECRET_KEY (run: python -c \"import secrets; print(secrets.token_urlsafe(50))\")"; \
+		echo "⚠️  Remember to set DJANGO_SECRET_KEY (run: python3 -c \"import secrets; print(secrets.token_urlsafe(50))\")"; \
 	else \
 		echo "ℹ️  .env already exists, skipping."; \
 	fi
@@ -184,24 +184,24 @@ db-restore: ## Restore latest backup (set FILE=path to restore specific file)
 # =============================================================================
 
 migrate: ## Apply all pending migrations
-	python manage.py migrate
+	python3 manage.py migrate
 
 makemigrations: ## Create migrations for all apps (use APP=appname for one app)
 	@if [ -z "$(APP)" ]; then \
-		python manage.py makemigrations; \
+		python3 manage.py makemigrations; \
 	else \
-		python manage.py makemigrations $(APP); \
+		python3 manage.py makemigrations $(APP); \
 	fi
 
 migrations-show: ## Show migration status for all apps
-	python manage.py showmigrations
+	python3 manage.py showmigrations
 
 migrations-empty: ## Create empty migration (use APP=appname required)
 	@if [ -z "$(APP)" ]; then \
 		echo "❌ Usage: make migrations-empty APP=appname"; \
 		exit 1; \
 	fi
-	python manage.py makemigrations $(APP) --empty
+	python3 manage.py makemigrations $(APP) --empty
 
 migrations-reset: ## ⚠️  Delete all migrations files and recreate (use only before first commit)
 	@echo "⚠️  This will DELETE all migration files (except __init__.py)."
@@ -219,24 +219,24 @@ migrations-reset: ## ⚠️  Delete all migrations files and recreate (use only 
 # =============================================================================
 
 run: ## Run development server locally on http://localhost:8000
-	python manage.py runserver
+	python3 manage.py runserver
 
 docker-dev: db-up ## Alias: start full dev stack in Docker (db + web)
 
 shell: ## Open Django shell (with auto-imports via shell_plus if available)
-	@python manage.py shell_plus 2>/dev/null || python manage.py shell
+	@python3 manage.py shell_plus 2>/dev/null || python3 manage.py shell
 
 superuser: ## Create a Django superuser
-	python manage.py createsuperuser
+	python3 manage.py createsuperuser
 
 collectstatic: ## Collect static files (for production)
-	python manage.py collectstatic --noinput
+	python3 manage.py collectstatic --noinput
 
 check: ## Run Django's system check
-	python manage.py check
+	python3 manage.py check
 
 test-email: ## Send a test HTML email (EMAIL=addr optional)
-	python manage.py send_test_email $(EMAIL)
+	python3 manage.py send_test_email $(EMAIL)
 
 startapp: ## Create a new app under apps/ (use NAME=appname)
 	@if [ -z "$(NAME)" ]; then \
@@ -244,7 +244,7 @@ startapp: ## Create a new app under apps/ (use NAME=appname)
 		exit 1; \
 	fi
 	mkdir -p apps/$(NAME)
-	python manage.py startapp $(NAME) apps/$(NAME)
+	python3 manage.py startapp $(NAME) apps/$(NAME)
 	@echo "✅ App created at apps/$(NAME)/"
 	@echo "⚠️  Don't forget to add 'apps.$(NAME)' to LOCAL_APPS in config/settings/base.py"
 
@@ -255,10 +255,10 @@ startapp: ## Create a new app under apps/ (use NAME=appname)
 seed: seed-demo ## Alias for seed-demo
 
 seed-demo: ## Populate the database with demo data
-	python manage.py seed_demo
+	python3 manage.py seed_demo
 
 seed-clean: ## Remove all demo data (preserves migrations)
-	python manage.py seed_demo --clean
+	python3 manage.py seed_demo --clean
 
 # =============================================================================
 # TESTS & QUALITY
@@ -298,7 +298,7 @@ type-check: ## Run mypy type checking (if installed)
 # =============================================================================
 
 openapi: ## Generate OpenAPI schema to docs/openapi.json
-	python manage.py spectacular --color --file docs/openapi.json
+	python3 manage.py spectacular --color --file docs/openapi.json
 	@echo "OpenAPI schema written to docs/openapi.json"
 
 docs: ## Open Swagger UI in browser (server must be running)
@@ -330,16 +330,16 @@ docker-shell: ## Open shell in web container
 # =============================================================================
 
 doctor: ## Run health checks on the local deployment
-	@python -m cli.doctor check 2>/dev/null || echo "CLI doctor not yet implemented (Day 10)"
+	@python3 -m cli.doctor check 2>/dev/null || echo "CLI doctor not yet implemented (Day 10)"
 
 audit-verify: ## Verify the integrity of the audit log hash chain
-	python manage.py verify_audit_chain
+	python3 manage.py verify_audit_chain
 
 run-checks: ## Run pending monitor checks (manual trigger)
-	python manage.py run_checks
+	python3 manage.py run_checks
 
 run-scheduler: ## Run background scheduler locally (checks, maintenance, webhooks, purge)
-	python manage.py run_scheduler
+	python3 manage.py run_scheduler
 
 scheduler-logs: ## Follow scheduler container logs (Docker dev stack)
 	$(COMPOSE_DEV) logs -f scheduler
@@ -356,8 +356,8 @@ deploy-vps: ## Deploy to VPS (set VPS_HOST in .env)
 # CLEANUP
 # =============================================================================
 
-clean: clean-pyc ## Clean Python cache files
-	@echo "Cleaned Python cache."
+clean: clean-pyc ## Clean python3 cache files
+	@echo "Cleaned python3 cache."
 
 clean-pyc: ## Remove .pyc files and __pycache__ directories
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -370,7 +370,7 @@ clean-all: clean-pyc ## Full cleanup: cache + venv + db volume (full reset)
 	if [ "$$confirm" = "yes" ]; then \
 		rm -rf venv .pytest_cache .coverage htmlcov staticfiles; \
 		$(COMPOSE_DEV) down -v 2>/dev/null || true; \
-		echo "Full cleanup done. Run 'python -m venv venv && source venv/bin/activate && make install' to restart."; \
+		echo "Full cleanup done. Run 'python3 -m venv venv && source venv/bin/activate && make install' to restart."; \
 	else \
 		echo "Cancelled."; \
 	fi

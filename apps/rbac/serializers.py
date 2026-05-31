@@ -38,19 +38,35 @@ class RoleSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class _NestedUserSerializer(serializers.Serializer):
+    id        = serializers.UUIDField(source="user.id",         read_only=True)
+    email     = serializers.EmailField(source="user.email",     read_only=True)
+    full_name = serializers.CharField(source="user.full_name",  read_only=True)
+
+
+class _NestedRoleSerializer(serializers.Serializer):
+    id   = serializers.UUIDField(source="role.id",   read_only=True)
+    name = serializers.CharField(source="role.name", read_only=True)
+
+
 class TeamMemberSerializer(serializers.ModelSerializer):
-    user_email = serializers.EmailField(source="user.email", read_only=True)
-    user_id = serializers.UUIDField(source="user.id", read_only=True)
-    role_name = serializers.CharField(source="role.name", read_only=True)
+    user       = _NestedUserSerializer(source="*", read_only=True)
+    role       = _NestedRoleSerializer(source="*", read_only=True)
+    granted_by = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamMembership
-        fields = ("id", "user_id", "user_email", "role_id", "role_name", "created_at")
-        read_only_fields = ("id", "user_id", "user_email", "role_name", "created_at")
+        fields = ("id", "user", "role", "granted_by", "created_at")
+        read_only_fields = fields
+
+    def get_granted_by(self, obj):
+        if obj.granted_by is None:
+            return None
+        return {"id": str(obj.granted_by.id), "email": obj.granted_by.email}
 
 
 class AddTeamMemberSerializer(serializers.Serializer):
-    user_id = serializers.UUIDField()
+    email   = serializers.EmailField()
     role_id = serializers.UUIDField()
 
 

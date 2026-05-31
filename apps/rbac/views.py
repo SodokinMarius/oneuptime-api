@@ -4,6 +4,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.rbac.constants import ALL_PERMISSIONS
@@ -18,6 +19,17 @@ from apps.rbac.serializers import (
     TeamMemberSerializer,
     TeamSerializer,
 )
+
+
+def _require_project(request):
+    """Return request.project or raise a descriptive 400 if it is not set."""
+    project = getattr(request, "project", None)
+    if project is None:
+        raise ValidationError(
+            "No project context found. "
+            "Send the X-Project-Id header (or X-Tenant-Id to use the default project)."
+        )
+    return project
 
 
 class RoleViewSet(PermissionMixin, viewsets.ModelViewSet):
@@ -42,7 +54,7 @@ class RoleViewSet(PermissionMixin, viewsets.ModelViewSet):
         return Role.objects.filter(project=project).order_by("name")
 
     def perform_create(self, serializer):
-        project = self.request.project
+        project = _require_project(self.request)
         serializer.save(tenant=project.tenant, project=project, is_system=False)
 
     def destroy(self, request, *args, **kwargs):
@@ -74,7 +86,6 @@ class TeamViewSet(PermissionMixin, viewsets.ModelViewSet):
         "partial_update": "team:update",
         "destroy":        "team:delete",
         "members":        "team:read",
-        "add_member":     "team:manage_members",
         "remove_member":  "team:manage_members",
     }
 
@@ -85,27 +96,39 @@ class TeamViewSet(PermissionMixin, viewsets.ModelViewSet):
         return Team.objects.filter(project=project).prefetch_related("memberships")
 
     def perform_create(self, serializer):
-        project = self.request.project
+        project = _require_project(self.request)
         serializer.save(tenant=project.tenant, project=project)
 
-    @extend_schema(tags=["RBAC"], summary="List team members")
-    @action(detail=True, methods=["get"], url_path="members")
+    @extend_schema(tags=["RBAC"], summary="List or add team members",
+                   request=AddTeamMemberSerializer)
+    @action(detail=True, methods=["get", "post"], url_path="members")
     def members(self, request, pk=None):
         team = self.get_object()
-        memberships = team.memberships.select_related("user", "role").all()
-        return Response(TeamMemberSerializer(memberships, many=True).data)
 
-    @extend_schema(tags=["RBAC"], summary="Add a member to the team",
-                   request=AddTeamMemberSerializer)
-    @action(detail=True, methods=["post"], url_path="members")
-    def add_member(self, request, pk=None):
-        team = self.get_object()
+        if request.method == "GET":
+            memberships = team.memberships.select_related("user", "role").all()
+            return Response(TeamMemberSerializer(memberships, many=True).data)
+
+        # POST — requires team:manage_members permission
+        from rest_framework.exceptions import PermissionDenied
+        from apps.rbac.permissions import get_user_permissions, has_permission as _has_perm
+        if not request.user.is_superuser:
+            project = getattr(request, "project", None)
+            if project:
+                user_perms = get_user_permissions(request.user, project)
+                if not _has_perm(user_perms, "team:manage_members"):
+                    raise PermissionDenied()
+
         serializer = AddTeamMemberSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        user = get_object_or_404(User, id=serializer.validated_data["user_id"])
+        user = get_object_or_404(
+            User,
+            email__iexact=serializer.validated_data["email"],
+            is_active=True,
+        )
         role = get_object_or_404(Role, id=serializer.validated_data["role_id"],
                                  project=team.project)
 
@@ -159,7 +182,7 @@ class ApiKeyViewSet(PermissionMixin, viewsets.GenericViewSet):
         serializer = ApiKeyCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        project = request.project
+        project = _require_project(request)
         instance, raw_key = ApiKey.create_key(
             tenant=project.tenant,
             project=project,
@@ -209,5 +232,5 @@ class ResourcePolicyViewSet(PermissionMixin, viewsets.ModelViewSet):
         return qs.order_by("resource_type", "-created_at")
 
     def perform_create(self, serializer):
-        project = self.request.project
+        project = _require_project(self.request)
         serializer.save(tenant=project.tenant, project=project)

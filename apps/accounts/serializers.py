@@ -11,18 +11,61 @@ from apps.accounts.models import User, UserMembership
 class UserSerializer(serializers.ModelSerializer):
     """Public representation of a User."""
     full_name = serializers.CharField(read_only=True)
+    tenant = serializers.SerializerMethodField()
+    default_project = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'email', 'first_name', 'last_name', 'full_name',
             'is_active', 'is_email_verified', 'mfa_enabled',
-            'session_timeout_minutes', 'created_at', 'updated_at',
+            'session_timeout_minutes', 'tenant', 'default_project',
+            'created_at', 'updated_at',
         )
         read_only_fields = (
             'id', 'email', 'is_active', 'is_email_verified',
             'created_at', 'updated_at',
         )
+
+    def get_tenant(self, user):
+        membership = self._owner_membership(user)
+        if membership is None:
+            return None
+        t = membership.tenant
+        return {"id": str(t.id), "name": t.name, "slug": t.slug}
+
+    def get_default_project(self, user):
+        from apps.tenancy.models import Project
+        membership = self._owner_membership(user)
+        if membership is None:
+            return None
+        project = (
+            Project.objects.filter(tenant=membership.tenant, is_active=True)
+            .order_by("created_at")
+            .first()
+        )
+        if project is None:
+            return None
+        return {"id": str(project.id), "name": project.name, "slug": project.slug}
+
+    @staticmethod
+    def _owner_membership(user):
+        membership = (
+            UserMembership.objects.filter(
+                user=user, is_owner=True, accepted_at__isnull=False,
+            )
+            .select_related("tenant")
+            .first()
+        )
+        if membership is None:
+            membership = (
+                UserMembership.objects.filter(
+                    user=user, accepted_at__isnull=False,
+                )
+                .select_related("tenant")
+                .first()
+            )
+        return membership
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
