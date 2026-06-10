@@ -133,6 +133,16 @@ Deux types de tokens acceptés :
 | POST | `/teams/:id/members` | Ajouter un membre | ✅ |
 | DELETE | `/teams/:id/members/:uid` | Retirer un membre | ✅ |
 
+**Isolation par équipe (Option A)** — champs optionnels `team_id` / `team_name` sur les ressources scopées (monitors, incidents, status pages, webhooks, maintenance) :
+
+| Règle | Comportement |
+|-------|--------------|
+| `team_id` absent ou `null` | Ressource **partagée** — visible par tous les membres du projet (rétrocompatibilité) |
+| `team_id` renseigné | Visible uniquement par les membres de cette équipe |
+| Rôle `admin` (`*`) | Voit toutes les ressources du projet, quel que soit `team_id` |
+| Création sans `team_id` | Assignée automatiquement à la première équipe de l'utilisateur |
+| Filtre liste `?team_id=` | Restreint la liste à une équipe (en plus du scope utilisateur) |
+
 ### Clés API
 
 | Méthode | Endpoint | Description | Statut |
@@ -472,19 +482,28 @@ X-OneUptime-Delivery: <uuid>
 
 ---
 
-## ❌ §3 — SSO / SAML 2.0
+## ✅ §3 — SSO / SAML 2.0
 
 > Authentification fédérée (Okta, Azure AD, Google Workspace) avec provisionnement SCIM.
 
-| Endpoint CDC | Description |
-|-------------|-------------|
-| `GET /sso/metadata/:projectId` | Métadonnées SP (Service Provider) |
-| `POST /sso/acs/:projectId` | Assertion Consumer Service |
-| `POST /scim/v2/Users` | Provisionnement utilisateurs (Okta/Azure) |
-| `POST /scim/v2/Groups` | Provisionnement groupes |
-| Config IdP (entity_id, cert, JIT, enforce_sso) | Table `sso_config` |
+| Endpoint | Description | Statut |
+|----------|-------------|--------|
+| `GET /api/v1/sso/metadata/:projectId/` | Métadonnées SP (XML) | ✅ |
+| `GET /api/v1/sso/login/:projectId/` | Initier SAML (redirect IdP) | ✅ |
+| `POST /api/v1/sso/acs/:projectId/` | Assertion Consumer Service → JWT | ✅ |
+| `GET /api/v1/sso/discover/` | Découverte SSO par email | ✅ |
+| `GET /api/v1/sso/slo/:projectId/` | Single Logout (si IdP SLO configuré) | ✅ |
+| `CRUD /api/v1/sso/config/` | Configuration IdP + SCIM | ✅ |
+| `POST /scim/v2/Users` | Provisionnement utilisateurs | ✅ |
+| `POST /scim/v2/Groups` | Provisionnement groupes (Teams) | ✅ |
+| `GET /scim/v2/ServiceProviderConfig` | Capacités SCIM | ✅ |
+| Table `sso_config` + `scim_sync_log` | Schéma DB | ✅ |
+| JIT provisioning | Création auto utilisateur/équipe | ✅ |
+| `enforce_sso` | Blocage login password + API | ✅ |
 
-**Effort estimé :** 4–6 semaines
+**Prérequis déploiement :** `pip install python3-saml`, `libxmlsec1-dev`, variables `API_BASE_URL`, `SSO_SP_CERT`, `SSO_SP_PRIVATE_KEY`.
+
+**Guide opérationnel complet :** [`docs/SSO_GUIDE.md`](SSO_GUIDE.md) — configuration IdP, SCIM, frontend, dépannage.
 
 ---
 
@@ -499,7 +518,7 @@ X-OneUptime-Delivery: <uuid>
 | `POST /webhooks/:id/test` | Webhooks | ❌ | Envoi d'un événement test manuel |
 | `DELETE /on-call-schedules/:id` | On-Call | ❌ | Module inexistant |
 | Terraform Provider | Infrastructure | ❌ | Hors scope backend Python |
-| Hardened Docker images | DevOps | ❌ | Distroless, Trivy, cosign, SBOM |
+| Hardened Docker images | DevOps | ✅ | `Dockerfile.hardened`, Trivy CI, cosign, SBOM — voir [`HARDENED_IMAGES.md`](HARDENED_IMAGES.md) |
 | Data Residency / CMK | Infrastructure | ❌ | Routing région, chiffrement client-managed keys |
 
 ---
@@ -513,7 +532,7 @@ X-OneUptime-Delivery: <uuid>
 ```
 ✅ Authentification complète (JWT, API Keys, MFA, invitations, GDPR)
 ✅ Multi-tenancy avec isolation RLS PostgreSQL
-✅ RBAC avancé (rôles custom, teams, resource_policy)
+✅ RBAC avancé (rôles custom, teams, resource_policy, enforcement runtime + API keys)
 ✅ Monitoring (HTTP, TCP, heartbeat) + automatisation checks
 ✅ Gestion d'incidents (cycle complet, postmortems, timeline)
 ✅ Maintenance planifiée (transitions automatiques)
@@ -523,6 +542,8 @@ X-OneUptime-Delivery: <uuid>
 ✅ Admin API (impersonation, métriques, santé système)
 ✅ Rate Limiting (headers X-RateLimit-*, tiers par plan)
 ✅ OpenAPI 3.1 auto-générée
+✅ SSO / SAML 2.0 + SCIM 2.0 (Okta, Azure AD, Google, JIT, enforce_sso)
+✅ Images conteneurs renforcées (multi-stage, non-root, Trivy, cosign, SBOM)
 ```
 
 ## Ce qui reste à faire (par priorité)
@@ -536,7 +557,6 @@ Priorité 2 — Observabilité
 └── §17 Télémétrie            (0% — 4-6 semaines + décision ClickHouse vs Postgres)
 
 Priorité 3 — Entreprise
-├── §3  SSO / SAML 2.0        (0% — 4-6 semaines)
 └── Tests de couverture       (< 5% — 1-2 semaines)
 
 Priorité 4 — Nice to have

@@ -3,6 +3,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.monitoring.models import Monitor, MonitorCheck, MonitorGroup, MonitorType, Probe
+from core.serializers import TeamScopeSerializerMixin
 
 
 class ProbeSerializer(serializers.ModelSerializer):
@@ -22,7 +23,7 @@ class ProbeSerializer(serializers.ModelSerializer):
         return (timezone.now() - obj.last_seen_at) < timedelta(minutes=5)
 
 
-class MonitorSerializer(serializers.ModelSerializer):
+class MonitorSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Monitor
         fields = (
@@ -30,6 +31,7 @@ class MonitorSerializer(serializers.ModelSerializer):
             "interval_seconds", "timeout_seconds", "retries",
             "probe_locations", "criteria", "headers", "body",
             "alert_on_failure", "is_paused", "status", "tags",
+            "team_id", "team_name",
             "current_incident", "last_check_at", "next_check_at",
             "created_at", "updated_at",
         )
@@ -81,12 +83,16 @@ class MonitorBulkSerializer(serializers.Serializer):
         return value
 
 
-class MonitorGroupSerializer(serializers.ModelSerializer):
+class MonitorGroupSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     monitor_count = serializers.SerializerMethodField()
 
     class Meta:
         model = MonitorGroup
-        fields = ("id", "name", "description", "monitors", "monitor_count", "created_at", "updated_at")
+        fields = (
+            "id", "name", "description", "monitors", "monitor_count",
+            "team_id", "team_name",
+            "created_at", "updated_at",
+        )
         read_only_fields = ("id", "created_at", "updated_at")
 
     @extend_schema_field(serializers.IntegerField())

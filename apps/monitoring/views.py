@@ -18,9 +18,10 @@ from apps.monitoring.serializers import (
 )
 from apps.monitoring.services.uptime import build_status_timeline, compute_uptime
 from apps.rbac.permissions import PermissionMixin
+from core.team_scoping import TeamScopedViewMixin, resolve_team_for_create
 
 
-class MonitorViewSet(PermissionMixin, viewsets.ModelViewSet):
+class MonitorViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """
     Full CRUD for monitors plus pause/resume, uptime stats, and status timeline.
     """
@@ -57,7 +58,7 @@ class MonitorViewSet(PermissionMixin, viewsets.ModelViewSet):
         if search := params.get("search"):
             qs = qs.filter(name__icontains=search) | qs.filter(url__icontains=search)
 
-        return qs.order_by("name")
+        return self.scope_queryset_by_team(qs).order_by("name")
 
     def perform_create(self, serializer):
         project = self.request.project
@@ -66,6 +67,7 @@ class MonitorViewSet(PermissionMixin, viewsets.ModelViewSet):
             tenant=project.tenant,
             project=project,
             next_check_at=now,
+            **self.team_save_kwargs(serializer),
         )
 
     # ------------------------------------------------------------------
@@ -167,28 +169,34 @@ class MonitorViewSet(PermissionMixin, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["post"])
     def bulk(self, request):
-        serializer = MonitorBulkSerializer(data=request.data)
+        serializer = MonitorBulkSerializer(
+            data=request.data,
+            context={"request": request, "project": request.project},
+        )
         serializer.is_valid(raise_exception=True)
 
         project = request.project
         now = timezone.now()
         created = []
         for monitor_data in serializer.validated_data["monitors"]:
+            data = dict(monitor_data)
+            team = resolve_team_for_create(request, team=data.pop("team", None))
             m = Monitor.objects.create(
                 tenant=project.tenant,
                 project=project,
                 next_check_at=now,
-                **monitor_data,
+                team=team,
+                **data,
             )
             created.append(m)
 
         return Response(
-            MonitorSerializer(created, many=True).data,
+            self.get_serializer(created, many=True).data,
             status=status.HTTP_201_CREATED,
         )
 
 
-class MonitorGroupViewSet(PermissionMixin, viewsets.ModelViewSet):
+class MonitorGroupViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """CRUD for monitor groups."""
     serializer_class = MonitorGroupSerializer
     permission_map = {
@@ -204,11 +212,16 @@ class MonitorGroupViewSet(PermissionMixin, viewsets.ModelViewSet):
         project = getattr(self.request, "project", None)
         if project is None:
             return MonitorGroup.objects.none()
-        return MonitorGroup.objects.filter(project=project).prefetch_related("monitors")
+        qs = MonitorGroup.objects.filter(project=project).prefetch_related("monitors")
+        return self.scope_queryset_by_team(qs)
 
     def perform_create(self, serializer):
         project = self.request.project
-        serializer.save(tenant=project.tenant, project=project)
+        serializer.save(
+            tenant=project.tenant,
+            project=project,
+            **self.team_save_kwargs(serializer),
+        )
 
 
 class ProbeViewSet(PermissionMixin, viewsets.ReadOnlyModelViewSet):

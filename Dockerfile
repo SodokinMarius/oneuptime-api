@@ -15,6 +15,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc \
         libpq-dev \
+        libxmlsec1-dev \
+        libxmlsec1-openssl \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps

@@ -27,6 +27,13 @@ class Webhook(models.Model):
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="webhooks"
     )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="webhooks",
+    )
 
     name = models.CharField(max_length=200)
     url = models.URLField(max_length=2048)

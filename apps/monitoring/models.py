@@ -82,6 +82,14 @@ class Monitor(models.Model):
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="monitors"
     )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="monitors",
+        help_text="NULL = visible to all project members; set = team-scoped",
+    )
 
     name = models.CharField(max_length=200)
     type = models.CharField(max_length=20, choices=MonitorType.choices, default=MonitorType.API)
@@ -138,6 +146,13 @@ class MonitorGroup(models.Model):
     )
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="monitor_groups"
+    )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="monitor_groups",
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)

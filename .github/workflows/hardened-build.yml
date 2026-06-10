@@ -1,0 +1,116 @@
+# Enterprise hardened image pipeline (doc §5.3)
+# Build → Trivy (block CRITICAL/HIGH) → Syft SBOM → cosign sign
+name: Hardened Build
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'Dockerfile.hardened'
+      - 'requirements.txt'
+      - 'apps/**'
+      - 'core/**'
+      - 'oneuptime/**'
+      - '.github/workflows/hardened-build.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'Dockerfile.hardened'
+      - 'requirements.txt'
+      - 'apps/**'
+      - 'core/**'
+      - 'oneuptime/**'
+
+env:
+  IMAGE_NAME: oneuptime-api
+  IMAGE_TAG: hardened
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+
+jobs:
+  build-hardened:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build hardened image
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: Dockerfile.hardened
+          push: false
+          load: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+      - name: Generate SBOM (Syft / CycloneDX)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/syft:v1.18.1 \
+            "docker:${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            -o cyclonedx-json > sbom.json
+          echo "SBOM generated: $(wc -c < sbom.json) bytes"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx-${{ github.sha }}
+          path: sbom.json
+          retention-days: 90
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
+        if: github.event_name == 'push'
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign sign --yes "${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          cosign sign --yes "${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+      - name: Push to GHCR (main only)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ env.IMAGE_TAG }}
+          docker push ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ github.sha }}
+
+      - name: Sign pushed image
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign sign --yes "ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ env.IMAGE_TAG }}"
+          cosign sign --yes "ghcr.io/${{ github.repository_owner }}/oneuptime-api:${{ github.sha }}"

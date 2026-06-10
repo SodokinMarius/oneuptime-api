@@ -76,6 +76,8 @@ class UnifiedTokenAuthentication(BaseAuthentication):
                 )
             )
             user = self._jwt_auth.get_user(validated)
+            request.auth_method = validated.get("auth_method", "password")
+            request.sso_projects = validated.get("sso_projects", []) or []
             return (user, validated)
         except (InvalidToken, TokenError, JWTAuthFailed) as exc:
             raise AuthenticationFailed(str(exc)) from exc

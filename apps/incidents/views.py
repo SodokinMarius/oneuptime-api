@@ -24,6 +24,7 @@ from apps.incidents.serializers import (
 )
 from apps.incidents import services
 from apps.rbac.permissions import PermissionMixin
+from core.team_scoping import TeamScopedViewMixin
 
 User = get_user_model()
 
@@ -96,7 +97,7 @@ class IncidentSeverityViewSet(PermissionMixin, viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class IncidentViewSet(PermissionMixin, viewsets.ModelViewSet):
+class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """Full incident management: CRUD + lifecycle actions + notes + postmortem."""
     serializer_class = IncidentSerializer
     permission_map = {
@@ -137,7 +138,7 @@ class IncidentViewSet(PermissionMixin, viewsets.ModelViewSet):
         if resolved := params.get("resolved"):
             qs = qs.filter(state__is_resolved_state=(resolved.lower() == "true"))
 
-        return qs.order_by("-triggered_at")
+        return self.scope_queryset_by_team(qs).order_by("-triggered_at")
 
     def perform_create(self, serializer):
         project = self.request.project
@@ -148,7 +149,12 @@ class IncidentViewSet(PermissionMixin, viewsets.ModelViewSet):
             state = IncidentState.objects.filter(
                 project=project, name="triggered"
             ).first()
-        serializer.save(tenant=project.tenant, project=project, state=state)
+        serializer.save(
+            tenant=project.tenant,
+            project=project,
+            state=state,
+            **self.team_save_kwargs(serializer),
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle actions

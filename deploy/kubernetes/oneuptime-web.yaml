@@ -1,0 +1,103 @@
+# OneUptime API — hardened Kubernetes deployment
+# Apply: kubectl apply -f deploy/kubernetes/
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oneuptime
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oneuptime-web
+  namespace: oneuptime
+  labels:
+    app: oneuptime-web
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: http
+      name: http
+  selector:
+    app: oneuptime-web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oneuptime-web
+  namespace: oneuptime
+  labels:
+    app: oneuptime-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oneuptime-web
+  template:
+    metadata:
+      labels:
+        app: oneuptime-web
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: oneuptime-api:hardened
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - secretRef:
+                name: oneuptime-env
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: oneuptime.settings.prod
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: staticfiles
+              mountPath: /app/staticfiles
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: staticfiles
+          emptyDir:
+            sizeLimit: 128Mi

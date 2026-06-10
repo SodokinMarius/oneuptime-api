@@ -1,0 +1,36 @@
+# Optional Kyverno policy — verify cosign signatures on oneuptime images.
+# Requires: Kyverno installed + images signed with cosign.
+# Docs: https://kyverno.io/docs/writing-policies/verify-images/
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-oneuptime-images
+  annotations:
+    policies.kyverno.io/title: Verify OneUptime Image Signatures
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/description: >-
+      Require cosign signature on oneuptime-api hardened images.
+spec:
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: verify-cosign-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - oneuptime
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/*/oneuptime-api*"
+            - "oneuptime-api:hardened"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

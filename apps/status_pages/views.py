@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.rbac.permissions import PermissionMixin
+from core.team_scoping import TeamScopedViewMixin
 from apps.status_pages.models import (
     StatusPage,
     StatusPageAnnouncement,
@@ -23,7 +24,7 @@ from apps.status_pages.serializers import (
 )
 
 
-class StatusPageViewSet(PermissionMixin, viewsets.ModelViewSet):
+class StatusPageViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """
     Full CRUD for status pages within a project.
     Manage resources, announcements, and view subscribers.
@@ -51,16 +52,20 @@ class StatusPageViewSet(PermissionMixin, viewsets.ModelViewSet):
         project = getattr(self.request, "project", None)
         if project is None:
             return StatusPage.objects.none()
-        return (
+        qs = (
             StatusPage.objects
             .filter(project=project)
             .prefetch_related("resources__monitor", "resources__monitor_group")
-            .order_by("name")
         )
+        return self.scope_queryset_by_team(qs).order_by("name")
 
     def perform_create(self, serializer):
         project = self.request.project
-        serializer.save(tenant=project.tenant, project=project)
+        serializer.save(
+            tenant=project.tenant,
+            project=project,
+            **self.team_save_kwargs(serializer),
+        )
 
     # ------------------------------------------------------------------
     # Resources

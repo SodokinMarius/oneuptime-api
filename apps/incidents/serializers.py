@@ -1,6 +1,8 @@
 """Serializers for incidents resources."""
 from rest_framework import serializers
 
+from core.serializers import TeamScopeSerializerMixin
+
 from apps.incidents.models import (
     Incident,
     IncidentNote,
@@ -56,7 +58,7 @@ class IncidentPostmortemSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
-class IncidentSerializer(serializers.ModelSerializer):
+class IncidentSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     state_name = serializers.CharField(source="state.name", read_only=True)
     severity_name = serializers.CharField(source="severity.name", read_only=True)
     is_resolved = serializers.BooleanField(read_only=True)
@@ -69,6 +71,7 @@ class IncidentSerializer(serializers.ModelSerializer):
             "state", "state_name",
             "is_resolved",
             "monitor",
+            "team_id", "team_name",
             "assigned_to",
             "is_visible_on_status_page",
             "triggered_at",

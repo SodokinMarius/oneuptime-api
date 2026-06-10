@@ -223,6 +223,7 @@ def _open_incident(monitor: Monitor, check: MonitorCheck) -> None:
     incident = Incident.objects.create(
         tenant=monitor.tenant,
         project=monitor.project,
+        team=monitor.team,
         monitor=monitor,
         title=f"{monitor.name} is offline",
         description=check.error_message or "Monitor check failed",

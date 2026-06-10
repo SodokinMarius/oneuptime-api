@@ -37,6 +37,7 @@ from apps.accounts.services.mfa import MfaService
 from apps.accounts.services.onboarding import OnboardingService
 from apps.accounts.services.otp import OtpService
 from apps.accounts.utils import otp_error_response
+from apps.rbac.permissions import PermissionMixin
 
 User = get_user_model()
 
@@ -119,6 +120,16 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+
+        from apps.sso.services.enforcement import SSOEnforcement
+        if SSOEnforcement.user_requires_sso_login(user):
+            return Response(
+                {
+                    'detail': 'SSO is required for your organization. Use SAML login.',
+                    'sso_required': True,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Update last login info
         user.last_login = timezone.now()
@@ -638,10 +649,15 @@ class EraseMyAccountView(APIView):
 # Users management endpoints
 # ---------------------------------------------------------------------------
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(PermissionMixin, viewsets.ReadOnlyModelViewSet):
     """List and retrieve users in the current tenant."""
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_map = {
+        "list":       "user:read",
+        "retrieve":   "user:read",
+        "invite":     "user:invite",
+        "deactivate": "user:deactivate",
+    }
     lookup_field = "pk"
     lookup_value_regex = "[0-9a-f-]+"
 

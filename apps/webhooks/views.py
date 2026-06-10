@@ -6,10 +6,11 @@ from rest_framework.response import Response
 
 from apps.rbac.permissions import PermissionMixin
 from apps.webhooks.models import Webhook, WebhookDelivery
+from core.team_scoping import TeamScopedViewMixin
 from apps.webhooks.serializers import WebhookDeliverySerializer, WebhookSerializer
 
 
-class WebhookViewSet(PermissionMixin, viewsets.ModelViewSet):
+class WebhookViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """
     CRUD for outbound webhooks plus delivery history.
 
@@ -35,11 +36,15 @@ class WebhookViewSet(PermissionMixin, viewsets.ModelViewSet):
         qs = Webhook.objects.filter(project=project)
         if active := self.request.query_params.get("active"):
             qs = qs.filter(is_active=active.lower() == "true")
-        return qs.order_by("-created_at")
+        return self.scope_queryset_by_team(qs).order_by("-created_at")
 
     def perform_create(self, serializer):
         project = self.request.project
-        serializer.save(tenant=project.tenant, project=project)
+        serializer.save(
+            tenant=project.tenant,
+            project=project,
+            **self.team_save_kwargs(serializer),
+        )
 
     @extend_schema(tags=["Webhooks"], summary="List deliveries for a webhook")
     @action(detail=True, methods=["get"])

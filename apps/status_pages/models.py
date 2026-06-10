@@ -17,6 +17,13 @@ class StatusPage(models.Model):
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="status_pages"
     )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="status_pages",
+    )
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=100)

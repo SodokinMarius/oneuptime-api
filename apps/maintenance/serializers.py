@@ -2,9 +2,10 @@
 from rest_framework import serializers
 
 from apps.maintenance.models import MaintenanceStatus, ScheduledMaintenance
+from core.serializers import TeamScopeSerializerMixin
 
 
-class ScheduledMaintenanceSerializer(serializers.ModelSerializer):
+class ScheduledMaintenanceSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = ScheduledMaintenance
         fields = (
@@ -13,6 +14,7 @@ class ScheduledMaintenanceSerializer(serializers.ModelSerializer):
             "monitors", "status",
             "is_visible_on_status_page",
             "notify_subscribers",
+            "team_id", "team_name",
             "created_at", "updated_at",
         )
         read_only_fields = ("id", "status", "created_at", "updated_at")

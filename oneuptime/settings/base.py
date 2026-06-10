@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'apps.webhooks',
     'apps.audit',
     'apps.admin_api',
+    'apps.sso',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -293,6 +294,12 @@ SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
 # OTP / MFA / Activation
 # ---------------------------------------------------------------------------
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+API_BASE_URL = config('API_BASE_URL', default='http://localhost:8000')
+
+# SAML Service Provider key pair (PEM). Generate with:
+#   openssl req -x509 -newkey rsa:2048 -keyout sp.key -out sp.crt -days 3650 -nodes -subj "/CN=oneuptime-sp"
+SSO_SP_PRIVATE_KEY = config('SSO_SP_PRIVATE_KEY', default='')
+SSO_SP_CERT = config('SSO_SP_CERT', default='')
 OTP_LENGTH = config('OTP_LENGTH', default=6, cast=int)
 OTP_EXPIRY_MINUTES = config('OTP_EXPIRY_MINUTES', default=15, cast=int)
 OTP_MAX_ATTEMPTS = config('OTP_MAX_ATTEMPTS', default=5, cast=int)

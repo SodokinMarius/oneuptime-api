@@ -39,4 +39,8 @@ urlpatterns = [
     path('api/v1/', include('apps.audit.urls')),
     path('api/v1/', include('apps.status_pages.urls')),
     path('api/v1/', include('apps.admin_api.urls')),
+    path('api/v1/', include('apps.sso.urls')),
+
+    # SCIM 2.0 (bearer token auth, outside api/v1)
+    path('scim/v2/', include('apps.sso.scim_urls')),
 ]

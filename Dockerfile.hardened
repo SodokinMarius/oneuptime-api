@@ -1,0 +1,79 @@
+# =============================================================================
+# OneUptime API — Hardened production image (multi-stage)
+# =============================================================================
+# Enterprise checklist (doc §5):
+#   - Multi-stage build (no compiler in runtime)
+#   - Non-root USER 1000
+#   - Minimal runtime packages (libpq5, libxmlsec1 only)
+#   - Compatible readOnlyRootFilesystem + tmpfs /tmp (see docker-compose.hardened.yml)
+#
+# Note: full distroless is not used because python3-saml requires libxmlsec
+# at runtime. This image is the hardened equivalent for Django/Python.
+# =============================================================================
+
+# ─── Stage 1: Build dependencies ───────────────────────────────────────────
+FROM python:3.10-slim-bookworm AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
+        libxmlsec1-dev \
+        libxmlsec1-openssl \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
+
+
+# ─── Stage 2: Minimal runtime ────────────────────────────────────────────────
+FROM python:3.10-slim-bookworm AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=oneuptime.settings.prod
+
+# Runtime libs only — no compiler, no shell utilities beyond dash for entrypoint
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libpq5 \
+        libxmlsec1 \
+        libxmlsec1-openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 1000 oneuptime \
+    && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin oneuptime
+
+COPY --from=builder --chown=1000:1000 /opt/venv /opt/venv
+
+WORKDIR /app
+
+COPY --chown=1000:1000 manage.py .
+COPY --chown=1000:1000 oneuptime/ oneuptime/
+COPY --chown=1000:1000 apps/ apps/
+COPY --chown=1000:1000 core/ core/
+COPY --chown=1000:1000 docker/entrypoint.sh /entrypoint.sh
+
+RUN chmod 755 /entrypoint.sh \
+    && mkdir -p /app/staticfiles \
+    && chown -R 1000:1000 /app
+
+USER 1000:1000
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')" || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "oneuptime.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

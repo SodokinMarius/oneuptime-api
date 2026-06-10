@@ -36,11 +36,12 @@ ALL_PERMISSIONS = [
     "user:read", "user:invite", "user:deactivate", "user:change_role",
 
     # --- Project & Tenant ---
-    "project:read", "project:update", "project:delete",
+    "project:create", "project:read", "project:update", "project:delete", "project:manage_sso",
     "tenant:read", "tenant:update",
 
-    # --- RBAC ---
+    # --- RBAC meta (roles, teams, policies) ---
     "role:create", "role:read", "role:update", "role:delete",
+    "rbac:read", "rbac:manage",
 
     # --- API Keys ---
     "api_key:create", "api_key:read", "api_key:revoke",

@@ -36,12 +36,24 @@ SKIP_PATHS = {
     "/api/v1/openapi.json",
     "/api/v1/docs",
     "/api/v1/redoc",
+    "/api/v1/sso/discover/",
 }
+
+SKIP_PREFIXES = (
+    "/api/v1/sso/metadata/",
+    "/api/v1/sso/login/",
+    "/api/v1/sso/acs/",
+    "/api/v1/sso/slo/",
+    "/scim/v2/",
+)
 
 
 def _should_skip(path: str) -> bool:
     if path in SKIP_PATHS:
         return True
+    for prefix in SKIP_PREFIXES:
+        if path.startswith(prefix):
+            return True
     # Skip all /status/<slug>/ public pages
     if path.startswith("/status/"):
         return True
@@ -172,8 +184,35 @@ class ProjectMiddleware:
         project = self._resolve_project(request, tenant)
         if project:
             request.project = project
+            blocked = self._check_sso_enforcement(request, project)
+            if blocked is not None:
+                return blocked
 
         return self.get_response(request)
+
+    @staticmethod
+    def _check_sso_enforcement(request, project):
+        """Block API access when enforce_sso is on and session was not via SAML."""
+        if not request.user.is_authenticated:
+            return None
+        from apps.sso.services.enforcement import SSOEnforcement
+
+        if not SSOEnforcement.project_requires_sso(project.id):
+            return None
+        if SSOEnforcement.has_sso_access(request, project.id):
+            return None
+        return JsonResponse(
+            {
+                "type": "sso_required",
+                "title": "SSO Required",
+                "status": 406,
+                "detail": (
+                    "This project requires SSO authentication. "
+                    "Log in via SAML and include the SSO-issued token."
+                ),
+            },
+            status=406,
+        )
 
     @staticmethod
     def _resolve_project(request, tenant):

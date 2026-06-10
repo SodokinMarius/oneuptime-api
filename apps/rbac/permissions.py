@@ -3,10 +3,10 @@ RBAC permission resolution and DRF permission classes.
 
 Permission check priority:
   1. Superuser → always allowed
-  2. Wildcard "*" in role → always allowed
-  3. Exact match "resource:action"
-  4. Resource wildcard "resource:*"
-  5. Action wildcard "*:action"
+  2. ResourcePolicy deny → block (users only, not API keys)
+  3. ResourcePolicy allow → permit (users only)
+  4. API key permissions (when authenticated via ok_... token)
+  5. Role permissions (wildcard-aware)
   6. Deny
 """
 from django.db import models
@@ -31,6 +31,25 @@ def get_user_permissions(user, project) -> set:
     for m in memberships:
         perms.update(m.role.permissions)
     return perms
+
+
+def get_request_permissions(request, project) -> set:
+    """
+    Effective permission set for the current request.
+
+    API keys use their own permission list; JWT users use merged team roles.
+    """
+    api_key = getattr(request, "api_key", None)
+    if api_key:
+        return set(api_key.permissions or [])
+
+    if not request.user or not request.user.is_authenticated:
+        return set()
+
+    if project is None:
+        return {"*"} if request.user.is_superuser else set()
+
+    return get_user_permissions(request.user, project)
 
 
 def has_permission(user_perms: set, required: str) -> bool:
@@ -64,9 +83,12 @@ def check_resource_policy(user, project, resource_type: str, resource_id=None) -
     Returns:
       'deny'  — if any deny policy matches → block access
       'allow' — if an explicit allow policy matches
-      None    — no resource-level policy found, fall back to role check
+      None    — no resource-level policy found, fall back to role/API-key check
+
+    When resource_id is None (list/create actions), only type-wide policies
+    (resource_id IS NULL) are considered.
     """
-    from apps.rbac.models import ResourcePolicy, TeamMembership
+    from apps.rbac.models import ResourcePolicy
 
     role_ids = list(
         TeamMembership.objects.filter(user=user, team__project=project)
@@ -79,10 +101,13 @@ def check_resource_policy(user, project, resource_type: str, resource_id=None) -
         project=project,
         role_id__in=role_ids,
         resource_type=resource_type,
-    ).filter(
-        models.Q(resource_id__isnull=True) |
-        (models.Q(resource_id=resource_id) if resource_id else models.Q())
     )
+    if resource_id is not None:
+        qs = qs.filter(
+            models.Q(resource_id__isnull=True) | models.Q(resource_id=resource_id)
+        )
+    else:
+        qs = qs.filter(resource_id__isnull=True)
 
     effects = set(qs.values_list("effect", flat=True))
     if ResourcePolicy.EFFECT_DENY in effects:
@@ -95,6 +120,11 @@ def check_resource_policy(user, project, resource_type: str, resource_id=None) -
 class RequirePermission(BasePermission):
     """
     DRF permission class that checks a specific resource:action permission.
+
+    Integrates:
+      - Role-based permissions (team memberships)
+      - API key scoped permissions (request.api_key)
+      - ResourcePolicy allow/deny overrides (JWT users only)
 
     Usage:
         class MyView(APIView):
@@ -109,20 +139,43 @@ class RequirePermission(BasePermission):
     """
     def __init__(self, perm: str):
         self.perm = perm
+        parts = perm.split(":", 1)
+        self._resource_type = parts[0] if len(parts) == 2 else ""
 
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+    def _evaluate(self, request, obj=None) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated:
             return False
 
-        project = getattr(request, "project", None)
-        if project is None:
-            return request.user.is_superuser
+        if user.is_superuser:
+            return True
 
-        user_perms = get_user_permissions(request.user, project)
+        project = getattr(request, "project", None)
+        api_key = getattr(request, "api_key", None)
+
+        resource_id = getattr(obj, "id", None) if obj is not None else None
+
+        # Resource policies are evaluated for human users (role-linked), not API keys
+        if project and not api_key and self._resource_type:
+            policy_result = check_resource_policy(
+                user, project, self._resource_type, resource_id
+            )
+            if policy_result == "deny":
+                return False
+            if policy_result == "allow":
+                return True
+
+        if project is None:
+            return False
+
+        user_perms = get_request_permissions(request, project)
         return has_permission(user_perms, self.perm)
 
+    def has_permission(self, request, view):
+        return self._evaluate(request, obj=None)
+
     def has_object_permission(self, request, view, obj):
-        return self.has_permission(request, view)
+        return self._evaluate(request, obj=obj)
 
 
 class IsSuperAdmin(BasePermission):

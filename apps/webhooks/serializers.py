@@ -4,14 +4,16 @@ import secrets
 from rest_framework import serializers
 
 from apps.webhooks.models import Webhook, WebhookDelivery
+from core.serializers import TeamScopeSerializerMixin
 
 
-class WebhookSerializer(serializers.ModelSerializer):
+class WebhookSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Webhook
         fields = (
             "id", "name", "url", "secret", "event_types",
             "is_active", "headers", "timeout_seconds", "max_retries",
+            "team_id", "team_name",
             "created_at", "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")

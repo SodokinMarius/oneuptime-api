@@ -90,6 +90,13 @@ class Incident(models.Model):
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="incidents"
     )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="incidents",
+    )
     monitor = models.ForeignKey(
         "monitoring.Monitor",
         on_delete=models.SET_NULL,

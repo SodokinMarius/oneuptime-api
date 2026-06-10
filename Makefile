@@ -9,8 +9,9 @@
 SHELL := /bin/bash
 
 # Docker Compose files
-COMPOSE_DEV  := docker compose --env-file .env -f docker/docker-compose-dev.yml
-COMPOSE_PROD := docker compose --env-file .env -f docker/docker-compose.yml
+COMPOSE_DEV      := docker compose --env-file .env -f docker/docker-compose-dev.yml
+COMPOSE_PROD     := docker compose --env-file .env -f docker/docker-compose.prod.yml
+COMPOSE_HARDENED := docker compose --env-file .env -f docker/docker-compose.hardened.yml
 
 # Read DB credentials from .env (used in some targets)
 POSTGRES_USER := $(shell grep -E '^POSTGRES_USER=' .env 2>/dev/null | cut -d= -f2)
@@ -35,7 +36,7 @@ TIMESTAMP  := $(shell date +%Y%m%d_%H%M%S)
         lint format type-check \
         openapi docs \
         clean clean-pyc clean-all \
-        docker-build docker-up docker-down docker-logs docker-shell \
+        docker-build docker-build-hardened docker-up docker-up-hardened docker-down docker-logs docker-shell \
         deploy-vps \
         doctor audit-verify run-checks run-scheduler scheduler-logs \
         env env-check git-init
@@ -310,11 +311,17 @@ docs: ## Open Swagger UI in browser (server must be running)
 # DOCKER (full stack — prod-like)
 # =============================================================================
 
-docker-build: ## Build production Docker image
+docker-build: ## Build production Docker image (standard Dockerfile)
 	$(COMPOSE_PROD) build
+
+docker-build-hardened: ## Build hardened Enterprise image (Dockerfile.hardened)
+	docker build -f Dockerfile.hardened -t oneuptime-api:hardened .
 
 docker-up: ## Start full stack (web + db + nginx) in production mode
 	$(COMPOSE_PROD) up -d
+
+docker-up-hardened: ## Start hardened production stack (read-only, non-root)
+	$(COMPOSE_HARDENED) up -d --build
 
 docker-down: ## Stop full stack
 	$(COMPOSE_PROD) down

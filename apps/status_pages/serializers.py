@@ -3,6 +3,8 @@ from django.db import models
 from django.utils import timezone
 from rest_framework import serializers
 
+from core.serializers import TeamScopeSerializerMixin
+
 from apps.status_pages.models import (
     StatusPage,
     StatusPageAnnouncement,
@@ -67,7 +69,7 @@ class StatusPageSubscriberSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "is_verified", "subscribed_at")
 
 
-class StatusPageSerializer(serializers.ModelSerializer):
+class StatusPageSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     resources = StatusPageResourceSerializer(many=True, read_only=True)
     subscribers_count = serializers.SerializerMethodField()
 
@@ -76,6 +78,7 @@ class StatusPageSerializer(serializers.ModelSerializer):
         fields = (
             "id", "name", "slug", "is_public", "custom_domain",
             "logo_url", "primary_color", "custom_css", "description",
+            "team_id", "team_name",
             "resources", "subscribers_count",
             "created_at", "updated_at",
         )

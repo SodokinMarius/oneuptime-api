@@ -7,9 +7,10 @@ from rest_framework.response import Response
 from apps.maintenance.models import MaintenanceStatus, ScheduledMaintenance
 from apps.maintenance.serializers import ScheduledMaintenanceSerializer
 from apps.rbac.permissions import PermissionMixin
+from core.team_scoping import TeamScopedViewMixin
 
 
-class ScheduledMaintenanceViewSet(PermissionMixin, viewsets.ModelViewSet):
+class ScheduledMaintenanceViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
     """CRUD for scheduled maintenance windows."""
     serializer_class = ScheduledMaintenanceSerializer
     permission_map = {
@@ -32,11 +33,15 @@ class ScheduledMaintenanceViewSet(PermissionMixin, viewsets.ModelViewSet):
         if s := self.request.query_params.get("status"):
             qs = qs.filter(status=s)
 
-        return qs.order_by("-starts_at")
+        return self.scope_queryset_by_team(qs).order_by("-starts_at")
 
     def perform_create(self, serializer):
         project = self.request.project
-        serializer.save(tenant=project.tenant, project=project)
+        serializer.save(
+            tenant=project.tenant,
+            project=project,
+            **self.team_save_kwargs(serializer),
+        )
 
     @extend_schema(tags=["Maintenance"], summary="Cancel a scheduled maintenance window")
     @action(detail=True, methods=["post"])

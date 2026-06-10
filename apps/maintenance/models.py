@@ -27,6 +27,13 @@ class ScheduledMaintenance(models.Model):
     project = models.ForeignKey(
         "tenancy.Project", on_delete=models.CASCADE, related_name="scheduled_maintenances"
     )
+    team = models.ForeignKey(
+        "rbac.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="scheduled_maintenances",
+    )
 
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True)

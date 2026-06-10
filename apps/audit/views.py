@@ -29,10 +29,10 @@ class AuditLogViewSet(
     """
     serializer_class = AuditLogSerializer
     permission_map = {
-        "list":     "audit:read",
-        "retrieve": "audit:read",
-        "verify":   "audit:read",
-        "export":   "audit:export",
+        "list":     "audit_log:read",
+        "retrieve": "audit_log:read",
+        "verify":   "audit_log:verify",
+        "export":   "audit_log:export",
     }
 
     def get_queryset(self):
@@ -182,12 +182,12 @@ class RetentionPolicyViewSet(PermissionMixin, viewsets.ModelViewSet):
     """
     serializer_class = RetentionPolicySerializer
     permission_map = {
-        "list":           "audit:read",
-        "retrieve":       "audit:read",
-        "create":         "audit:manage",
-        "update":         "audit:manage",
-        "partial_update": "audit:manage",
-        "destroy":        "audit:manage",
+        "list":           "retention_policy:read",
+        "retrieve":       "retention_policy:read",
+        "create":         "retention_policy:update",
+        "update":         "retention_policy:update",
+        "partial_update": "retention_policy:update",
+        "destroy":        "retention_policy:update",
     }
 
     def get_queryset(self):

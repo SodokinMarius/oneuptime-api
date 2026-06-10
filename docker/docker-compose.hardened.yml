@@ -1,0 +1,160 @@
+# =============================================================================
+# Production stack — hardened images (Dockerfile.hardened)
+# Usage: docker compose -f docker/docker-compose.hardened.yml --env-file .env up -d
+# =============================================================================
+# Does NOT replace docker-compose-dev.yml (dev) or docker-compose.prod.yml (standard prod).
+# =============================================================================
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: oneuptime-db-hardened
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata_hardened:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: oneuptime-redis-hardened
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redis_hardened:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile.hardened
+    image: oneuptime-api:hardened
+    container_name: oneuptime-web-hardened
+    restart: always
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:size=64M,mode=1777
+    command: >
+      gunicorn oneuptime.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers ${GUNICORN_WORKERS:-3}
+        --timeout ${GUNICORN_TIMEOUT:-30}
+        --access-logfile -
+        --error-logfile -
+        --log-level info
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_SETTINGS_MODULE: oneuptime.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL:    redis://redis:6379/0
+    volumes:
+      - static_hardened:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: Dockerfile.hardened
+    image: oneuptime-api:hardened
+    container_name: oneuptime-scheduler-hardened
+    restart: always
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64M,mode=1777
+    command: python manage.py run_scheduler
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_SETTINGS_MODULE: oneuptime.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL:    redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: oneuptime-nginx-hardened
+    restart: always
+    ports:
+      - "${WEB_PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_hardened:/app/staticfiles:ro
+    depends_on:
+      - web
+    networks:
+      - internal
+      - external
+    read_only: true
+    tmpfs:
+      - /tmp:size=32M,mode=1777
+      - /var/cache/nginx:size=16M,mode=755
+      - /var/run:size=8M,mode=755
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
+
+volumes:
+  pgdata_hardened:
+    name: oneuptime_pgdata_hardened
+  redis_hardened:
+    name: oneuptime_redis_hardened
+  static_hardened:
+    name: oneuptime_static_hardened
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  external:
+    driver: bridge
