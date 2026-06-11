@@ -68,6 +68,7 @@ services:
         condition: service_healthy
     networks:
       - internal
+      - external   # SMTP sortant (Gmail) — internal seul bloque la résolution DNS
     # Pas de port exposé directement — passe par Nginx
 
   # ─── Scheduler (jobs en arrière-plan) ─────────────────────────────────────
@@ -93,6 +94,7 @@ services:
         condition: service_started
     networks:
       - internal
+      - external   # webhooks / notifications email
 
   # ─── Nginx ─────────────────────────────────────────────────────────────────
   nginx:
