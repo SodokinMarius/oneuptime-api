@@ -30,6 +30,7 @@ COPY manage.py .
 COPY oneuptime/ oneuptime/
 COPY apps/ apps/
 COPY core/ core/
+COPY templates/ templates/
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

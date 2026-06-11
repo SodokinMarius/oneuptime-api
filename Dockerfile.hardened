@@ -62,6 +62,7 @@ COPY --chown=1000:1000 manage.py .
 COPY --chown=1000:1000 oneuptime/ oneuptime/
 COPY --chown=1000:1000 apps/ apps/
 COPY --chown=1000:1000 core/ core/
+COPY --chown=1000:1000 templates/ templates/
 COPY --chown=1000:1000 docker/entrypoint.sh /entrypoint.sh
 
 RUN chmod 755 /entrypoint.sh \
