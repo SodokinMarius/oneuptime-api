@@ -9,9 +9,9 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
   const [form, setForm] = useState({ email: '', role_id: '' })
   const [error, setError] = useState('')
 
-  const { data: roles } = useQuery({
+  const { data: roles, isError: rolesError } = useQuery({
     queryKey: ['roles'],
-    queryFn: () => rbacApi.roles.list().then(r => r.data.results),
+    queryFn: () => rbacApi.roles.listAll(),
   })
 
   const mut = useMutation({
@@ -42,7 +42,8 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
           autoComplete="off"
         />
         <p className="text-xs text-gray-400 mt-1">
-          L'utilisateur doit déjà avoir un compte actif dans l'organisation.
+          L'utilisateur doit d'abord être invité dans l'organisation (page Utilisateurs), puis accepté.
+          L'ajout à une équipe n'envoie pas un email.
         </p>
       </div>
       <div>
@@ -52,6 +53,12 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
           <option value="">Sélectionner un rôle...</option>
           {roles?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
+        {rolesError && (
+          <p className="text-xs text-red-600 mt-1">Impossible de charger les rôles.</p>
+        )}
+        {!rolesError && roles && roles.length === 0 && (
+          <p className="text-xs text-amber-600 mt-1">Aucun rôle disponible dans ce projet.</p>
+        )}
       </div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
       <div className="flex justify-end">
@@ -162,7 +169,7 @@ export default function TeamsTab() {
 
   const { data: teams, isLoading } = useQuery({
     queryKey: ['teams'],
-    queryFn: () => rbacApi.teams.list().then(r => r.data.results),
+    queryFn: () => rbacApi.teams.listAll(),
   })
 
   const createMut = useMutation({

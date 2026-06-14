@@ -12,6 +12,7 @@ export default function UsersPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState('')
   const [inviteSuccess, setInviteSuccess] = useState(false)
+  const [inviteWarning, setInviteWarning] = useState('')
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -21,8 +22,12 @@ export default function UsersPage() {
 
   const inviteMutation = useMutation({
     mutationFn: () => usersApi.invite(inviteEmail),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['users'] })
+      const detail = res.data?.detail as string | undefined
+      if (detail?.includes('email could not be sent') || detail?.includes('SMTP')) {
+        setInviteWarning(detail)
+      }
       setInviteSuccess(true)
       setInviteEmail('')
     },
@@ -44,6 +49,7 @@ export default function UsersPage() {
     setInviteEmail('')
     setInviteError('')
     setInviteSuccess(false)
+    setInviteWarning('')
   }
 
   return (
@@ -51,7 +57,7 @@ export default function UsersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Utilisateurs</h2>
-          <p className="text-gray-500 text-sm mt-1">Membres de votre organisation</p>
+          <p className="text-gray-500 text-sm mt-1">Membres actifs de votre organisation (invitations en attente non affichées)</p>
         </div>
         <button onClick={() => setShowInvite(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors w-full sm:w-auto">
@@ -134,8 +140,14 @@ export default function UsersPage() {
         {inviteSuccess ? (
           <div className="text-center py-4">
             <p className="text-4xl mb-3">✉️</p>
-            <p className="text-sm font-medium text-gray-800 mb-1">Invitation envoyée !</p>
-            <p className="text-sm text-gray-500 mb-6">L'utilisateur recevra un email pour rejoindre votre organisation.</p>
+            <p className="text-sm font-medium text-gray-800 mb-1">
+              {inviteWarning ? 'Invitation créée' : 'Invitation envoyée !'}
+            </p>
+            {inviteWarning ? (
+              <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-6">{inviteWarning}</p>
+            ) : (
+              <p className="text-sm text-gray-500 mb-6">L'utilisateur recevra un email pour rejoindre votre organisation.</p>
+            )}
             <button onClick={handleCloseInvite} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
               Fermer
             </button>

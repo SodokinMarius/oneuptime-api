@@ -13,7 +13,7 @@ interface Props {
 export function TeamSelect({ value, onChange, allowShared = false, className = '' }: Props) {
   const { data: teams, isLoading } = useQuery({
     queryKey: ['teams'],
-    queryFn: () => rbacApi.teams.list().then(r => r.data.results),
+    queryFn: () => rbacApi.teams.listAll(),
   })
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import { authStore } from '@/store/auth'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import ActivatePage from '@/pages/auth/ActivatePage'
+import AcceptInvitePage from '@/pages/auth/AcceptInvitePage'
 import SSOCallbackPage from '@/pages/auth/SSOCallbackPage'
 import AppLayout from '@/components/layout/AppLayout'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
   { path: '/login',    element: <RedirectIfAuth><LoginPage /></RedirectIfAuth> },
   { path: '/register', element: <RedirectIfAuth><RegisterPage /></RedirectIfAuth> },
   { path: '/activate',     element: <RedirectIfAuth><ActivatePage /></RedirectIfAuth> },
+  { path: '/accept-invite', element: <RedirectIfAuth><AcceptInvitePage /></RedirectIfAuth> },
   { path: '/sso/callback', element: <SSOCallbackPage /> },
   {
     path: '/',

@@ -84,12 +84,12 @@ function SSOConfigForm({
 
   const { data: roles } = useQuery({
     queryKey: ['roles'],
-    queryFn: () => rbacApi.roles.list().then(r => r.data.results),
+    queryFn: () => rbacApi.roles.listAll(),
   })
 
   const { data: teams } = useQuery({
     queryKey: ['teams'],
-    queryFn: () => rbacApi.teams.list().then(r => r.data.results),
+    queryFn: () => rbacApi.teams.listAll(),
   })
 
   const { data: presets } = useQuery({

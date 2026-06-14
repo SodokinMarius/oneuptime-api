@@ -58,4 +58,10 @@ export const authApi = {
 
   passwordResetConfirm: (data: { email: string; code: string; new_password: string }) =>
     client.post('/auth/password-reset/confirm', data),
+
+  acceptInvite: (data: { token: string; email: string; password?: string }) =>
+    client.post<TokenResponse & { tenant?: { id: string; name: string; slug: string } }>(
+      '/auth/accept-invite',
+      data,
+    ),
 }

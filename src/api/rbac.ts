@@ -1,4 +1,5 @@
 import client from './client'
+import { extractResults } from '@/utils/api'
 
 export interface Role {
   id: string
@@ -47,6 +48,10 @@ export interface ResourcePolicy {
 export const rbacApi = {
   roles: {
     list: () => client.get<{ results: Role[] }>('/roles'),
+    listAll: async (): Promise<Role[]> => {
+      const { data } = await client.get<{ results: Role[] } | Role[]>('/roles')
+      return extractResults(data)
+    },
     get: (id: string) => client.get<Role>(`/roles/${id}`),
     create: (data: { name: string; description?: string; permissions: string[] }) =>
       client.post<Role>('/roles', data),
@@ -57,6 +62,10 @@ export const rbacApi = {
 
   teams: {
     list: () => client.get<{ results: Team[] }>('/teams'),
+    listAll: async (): Promise<Team[]> => {
+      const { data } = await client.get<{ results: Team[] } | Team[]>('/teams')
+      return extractResults(data)
+    },
     get: (id: string) => client.get<Team>(`/teams/${id}`),
     create: (data: { name: string; description?: string }) =>
       client.post<Team>('/teams', data),

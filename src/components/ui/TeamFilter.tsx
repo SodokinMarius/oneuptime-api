@@ -10,7 +10,7 @@ interface Props {
 export function TeamFilter({ value, onChange, className = '' }: Props) {
   const { data: teams } = useQuery({
     queryKey: ['teams'],
-    queryFn: () => rbacApi.teams.list().then(r => r.data.results),
+    queryFn: () => rbacApi.teams.listAll(),
   })
 
   if (!teams?.length) return null

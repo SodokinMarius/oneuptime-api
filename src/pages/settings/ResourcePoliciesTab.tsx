@@ -13,8 +13,11 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ role_id: '', resource_type: '', resource_id: '', effect: 'allow' as 'allow' | 'deny' })
   const [error, setError] = useState('')
 
-  const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: () => rbacApi.roles.list().then(r => r.data) })
-  const roles = rolesData?.results ?? []
+  const { data: rolesData, isError: rolesError } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => rbacApi.roles.listAll(),
+  })
+  const roles = rolesData ?? []
 
   const mutation = useMutation({
     mutationFn: () => rbacApi.resourcePolicies.create({
@@ -38,6 +41,12 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
           <option value="">Sélectionner un rôle...</option>
           {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
+        {rolesError && (
+          <p className="text-xs text-red-600 mt-1">Impossible de charger les rôles. Vérifiez vos permissions.</p>
+        )}
+        {!rolesError && roles.length === 0 && (
+          <p className="text-xs text-amber-600 mt-1">Aucun rôle disponible. Créez un rôle dans l'onglet « Rôles ».</p>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Type de ressource</label>

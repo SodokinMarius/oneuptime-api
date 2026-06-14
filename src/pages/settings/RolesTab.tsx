@@ -126,7 +126,7 @@ export default function RolesTab() {
 
   const { data: roles, isLoading } = useQuery({
     queryKey: ['roles'],
-    queryFn: () => rbacApi.roles.list().then(r => r.data.results),
+    queryFn: () => rbacApi.roles.listAll(),
   })
 
   const deleteMut = useMutation({
