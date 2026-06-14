@@ -23,6 +23,7 @@ export function formatMs(ms: number | null | undefined): string {
   return `${(ms / 1000).toFixed(1)} s`
 }
 
-export function formatUptime(pct: number): string {
+export function formatUptime(pct: number | null | undefined): string {
+  if (pct == null) return '—'
   return `${pct.toFixed(2)} %`
 }

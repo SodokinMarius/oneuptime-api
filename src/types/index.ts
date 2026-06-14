@@ -43,7 +43,7 @@ export interface MonitorCheck {
 }
 
 export interface UptimeStats {
-  uptime_percent: number
+  uptime_percent: number | null
   total_checks: number
   failed_checks: number
   successful_checks: number

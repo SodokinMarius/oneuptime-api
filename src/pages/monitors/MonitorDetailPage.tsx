@@ -80,9 +80,9 @@ export default function MonitorDetailPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Uptime (30j)', value: formatUptime(uptime.uptime_percent), color: 'text-emerald-600' },
-            { label: 'Total checks', value: uptime.total_checks.toString(), color: 'text-gray-900' },
-            { label: 'Échecs', value: uptime.failed_checks.toString(), color: 'text-red-500' },
-            { label: 'Succès', value: uptime.successful_checks.toString(), color: 'text-emerald-600' },
+            { label: 'Total checks', value: uptime.total_checks ?? 0, color: 'text-gray-900' },
+            { label: 'Échecs', value: uptime.failed_checks ?? 0, color: 'text-red-500' },
+            { label: 'Succès', value: uptime.successful_checks ?? 0, color: 'text-emerald-600' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
