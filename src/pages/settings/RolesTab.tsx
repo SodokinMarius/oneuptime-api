@@ -3,18 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { rbacApi, type Role } from '@/api/rbac'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PermissionPicker } from '@/components/ui/PermissionPicker'
 import { IconShieldCheck } from '@/components/ui/Icons'
 import { formatRelative } from '@/utils/format'
 
 function RoleForm({ onSuccess }: { onSuccess: () => void }) {
   const [form, setForm] = useState({ name: '', description: '', permissions: [] as string[] })
-  const [permInput, setPermInput] = useState('')
   const [error, setError] = useState('')
-
-  const { data: allPerms } = useQuery({
-    queryKey: ['permissions'],
-    queryFn: () => rbacApi.roles.permissions().then(r => r.data.permissions),
-  })
 
   const mut = useMutation({
     mutationFn: () => rbacApi.roles.create(form),
@@ -24,27 +19,6 @@ function RoleForm({ onSuccess }: { onSuccess: () => void }) {
       setError(d?.errors?.[0]?.message || d?.detail || JSON.stringify(d))
     },
   })
-
-  const togglePerm = (p: string) =>
-    setForm(f => ({
-      ...f,
-      permissions: f.permissions.includes(p) ? f.permissions.filter(x => x !== p) : [...f.permissions, p],
-    }))
-
-  const addCustom = () => {
-    if (permInput.trim() && !form.permissions.includes(permInput.trim())) {
-      setForm(f => ({ ...f, permissions: [...f.permissions, permInput.trim()] }))
-      setPermInput('')
-    }
-  }
-
-  // Group permissions by resource
-  const grouped = (allPerms ?? []).reduce<Record<string, string[]>>((acc, p) => {
-    const [res] = p.split(':')
-    if (!acc[res]) acc[res] = []
-    acc[res].push(p)
-    return acc
-  }, {})
 
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
@@ -62,49 +36,10 @@ function RoleForm({ onSuccess }: { onSuccess: () => void }) {
 
       <div>
         <label className="label">Permissions</label>
-
-        {/* Quick toggle: all */}
-        <button type="button" onClick={() => setForm(f => ({ ...f, permissions: ['*'] }))}
-          className={`text-xs px-3 py-1 rounded-full border mb-3 transition-colors ${form.permissions.includes('*') ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-          ✦ Toutes les permissions (*)
-        </button>
-
-        {!form.permissions.includes('*') && (
-          <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-3">
-            {Object.entries(grouped).map(([res, perms]) => (
-              <div key={res}>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{res}</p>
-                <div className="flex flex-wrap gap-2">
-                  {perms.map(p => (
-                    <button key={p} type="button" onClick={() => togglePerm(p)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${form.permissions.includes(p) ? 'bg-blue-100 text-blue-700 border-blue-300' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Custom permission */}
-        <div className="flex gap-2 mt-2">
-          <input value={permInput} onChange={e => setPermInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
-            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="permission:action personnalisée" />
-          <button type="button" onClick={addCustom} className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">Ajouter</button>
-        </div>
-
-        {form.permissions.length > 0 && !form.permissions.includes('*') && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {form.permissions.map(p => (
-              <span key={p} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                {p}
-                <button type="button" onClick={() => togglePerm(p)} className="hover:text-red-600 ml-0.5">×</button>
-              </span>
-            ))}
-          </div>
-        )}
+        <PermissionPicker
+          value={form.permissions}
+          onChange={permissions => setForm(f => ({ ...f, permissions }))}
+        />
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
