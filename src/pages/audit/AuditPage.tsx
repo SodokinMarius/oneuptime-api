@@ -14,7 +14,7 @@ export default function AuditPage() {
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ valid: boolean; checked: number } | null>(null)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['audit-log', filters, page],
     queryFn: () => auditApi.list({
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
@@ -44,7 +44,7 @@ export default function AuditPage() {
   }
 
   const entries = data?.results ?? []
-  const totalPages = data ? Math.ceil(data.count / 30) : 1
+  const totalPages = data?.count ? Math.max(1, Math.ceil(data.count / 30)) : 1
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -106,7 +106,11 @@ export default function AuditPage() {
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : entries.length === 0 ? (
-          <p className="text-center text-gray-400 py-16 text-sm">Aucune entrée dans le journal.</p>
+          <p className="text-center text-gray-400 py-16 text-sm">
+            {isError
+              ? 'Impossible de charger le journal d\'audit.'
+              : 'Aucune entrée dans le journal. Les actions (monitors, incidents, clés API…) apparaîtront ici.'}
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto">
