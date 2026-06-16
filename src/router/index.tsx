@@ -14,6 +14,7 @@ import IncidentDetailPage from '@/pages/incidents/IncidentDetailPage'
 import MaintenancePage from '@/pages/maintenance/MaintenancePage'
 import StatusPagesPage from '@/pages/status-pages/StatusPagesPage'
 import StatusPageDetailPage from '@/pages/status-pages/StatusPageDetailPage'
+import PublicStatusPage from '@/pages/status-pages/PublicStatusPage'
 import WebhooksPage from '@/pages/webhooks/WebhooksPage'
 import WebhookDetailPage from '@/pages/webhooks/WebhookDetailPage'
 import AuditPage from '@/pages/audit/AuditPage'
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
   { path: '/activate',     element: <RedirectIfAuth><ActivatePage /></RedirectIfAuth> },
   { path: '/accept-invite', element: <RedirectIfAuth><AcceptInvitePage /></RedirectIfAuth> },
   { path: '/sso/callback', element: <SSOCallbackPage /> },
+  { path: '/status/:slug', element: <PublicStatusPage /> },
   {
     path: '/',
     element: <RequireAuth><AppLayout /></RequireAuth>,

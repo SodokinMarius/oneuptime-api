@@ -86,9 +86,13 @@ export interface Incident extends TeamScoped {
 export interface IncidentNote {
   id: string
   content: string
-  is_internal: boolean
-  author: { id: string; email: string; full_name: string }
+  is_public: boolean
+  /** @deprecated use is_public — kept for backward compat in UI */
+  is_internal?: boolean
+  author_email?: string
+  author?: { id: string; email: string; full_name: string }
   created_at: string
+  updated_at?: string
 }
 
 export interface IncidentState {

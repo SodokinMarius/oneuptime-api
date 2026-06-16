@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { incidentsApi } from '@/api/incidents'
+import { incidentsApi, type TimelineEntry } from '@/api/incidents'
 import { usersApi } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
@@ -27,17 +27,21 @@ export default function IncidentDetailPage() {
     enabled: !!id,
   })
 
-  const { data: notesData } = useQuery({
+  const { data: notesRaw } = useQuery({
     queryKey: ['incident-notes', id],
     queryFn: () => incidentsApi.notes(id!).then(r => r.data),
     enabled: !!id && activeTab === 'notes',
   })
+  const notes = notesRaw
+    ? (Array.isArray(notesRaw) ? notesRaw : notesRaw.results)
+    : undefined
 
-  const { data: timelineData } = useQuery({
+  const { data: timelineResponse } = useQuery({
     queryKey: ['incident-timeline', id],
     queryFn: () => incidentsApi.timeline.list(id!).then(r => r.data),
     enabled: !!id && activeTab === 'timeline',
   })
+  const timelineEntries: TimelineEntry[] = timelineResponse?.timeline ?? []
 
   const { data: postmortem } = useQuery({
     queryKey: ['incident-postmortem', id],
@@ -150,22 +154,25 @@ export default function IncidentDetailPage() {
               </button>
             </div>
           </div>
-          {notesData?.results?.length === 0 ? (
+          {(!notes || notes.length === 0) ? (
             <p className="text-center text-gray-400 py-8 text-sm">Aucune note pour l'instant.</p>
           ) : (
             <div className="space-y-3">
-              {notesData?.results?.map(note => (
-                <div key={note.id} className={`rounded-xl p-4 ${note.is_internal ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-gray-200'}`}>
+              {notes.map(note => {
+                const isInternal = note.is_internal ?? !note.is_public
+                const authorLabel = note.author?.full_name || note.author?.email || note.author_email || 'Utilisateur'
+                return (
+                <div key={note.id} className={`rounded-xl p-4 ${isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-gray-200'}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">{note.author.full_name}</span>
+                    <span className="text-sm font-medium text-gray-700">{authorLabel}</span>
                     <div className="flex items-center gap-2">
-                      {note.is_internal && <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Interne</span>}
+                      {isInternal && <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Interne</span>}
                       <span className="text-xs text-gray-400">{formatRelative(note.created_at)}</span>
                     </div>
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
@@ -183,25 +190,29 @@ export default function IncidentDetailPage() {
               {timelineMutation.isPending ? '...' : 'Ajouter'}
             </button>
           </div>
-          {!timelineData?.results || timelineData.results.length === 0 ? (
+          {timelineEntries.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">Timeline vide.</p>
           ) : (
             <div className="relative">
               <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200" />
               <div className="space-y-4">
-                {timelineData.results.map(entry => (
-                  <div key={entry.id} className="flex items-start gap-4 pl-12 relative">
+                {timelineEntries.map((entry, idx) => {
+                  const label = entry.event_type || entry.type || entry.action || 'event'
+                  const message = entry.message || entry.content || entry.action || '—'
+                  const when = entry.created_at || entry.at || ''
+                  return (
+                  <div key={entry.id ?? `${label}-${when}-${idx}`} className="flex items-start gap-4 pl-12 relative">
                     <div className="absolute left-3.5 top-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
                     <div className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded">{entry.event_type}</span>
-                        <span className="text-xs text-gray-400">{formatDate(entry.created_at)}</span>
+                        <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded">{label}</span>
+                        <span className="text-xs text-gray-400">{when ? formatDate(when) : ''}</span>
                       </div>
-                      <p className="text-sm text-gray-700">{entry.message}</p>
+                      <p className="text-sm text-gray-700">{message}</p>
                       {entry.actor && <p className="text-xs text-gray-400 mt-1">par {entry.actor.full_name}</p>}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}

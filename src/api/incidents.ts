@@ -2,11 +2,17 @@ import client from './client'
 import type { Incident, IncidentNote, IncidentState, IncidentSeverityObj, PaginatedResponse } from '@/types'
 
 export interface TimelineEntry {
-  id: string
-  event_type: string
-  message: string
-  actor: { id: string; email: string; full_name: string } | null
-  created_at: string
+  id?: string
+  type?: string
+  event_type?: string
+  message?: string
+  content?: string
+  action?: string
+  at?: string
+  created_at?: string
+  actor?: { id: string; email: string; full_name: string } | null
+  actor_id?: string | null
+  is_public?: boolean
 }
 
 export interface Postmortem {
@@ -60,14 +66,17 @@ export const incidentsApi = {
     client.post(`/incidents/${id}/assign`, { user_id }),
 
   notes: (id: string) =>
-    client.get<PaginatedResponse<IncidentNote>>(`/incidents/${id}/notes`),
+    client.get<IncidentNote[] | PaginatedResponse<IncidentNote>>(`/incidents/${id}/notes`),
 
   addNote: (id: string, content: string, is_internal = false) =>
-    client.post<IncidentNote>(`/incidents/${id}/notes`, { content, is_internal }),
+    client.post<IncidentNote>(`/incidents/${id}/notes`, {
+      content,
+      is_public: !is_internal,
+    }),
 
   timeline: {
     list: (id: string) =>
-      client.get<PaginatedResponse<TimelineEntry>>(`/incidents/${id}/timeline`),
+      client.get<{ timeline: TimelineEntry[] }>(`/incidents/${id}/timeline`),
     add: (id: string, message: string) =>
       client.post<TimelineEntry>(`/incidents/${id}/timeline`, { message }),
   },

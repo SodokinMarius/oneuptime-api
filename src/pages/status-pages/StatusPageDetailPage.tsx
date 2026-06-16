@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { statusPagesApi } from '@/api/statusPages'
+import { statusPagesApi, unwrapList } from '@/api/statusPages'
 import { monitorsApi } from '@/api/monitors'
 import { Modal } from '@/components/ui/Modal'
 import { TeamBadge } from '@/components/ui/TeamBadge'
@@ -23,23 +23,26 @@ export default function StatusPageDetailPage() {
     enabled: !!id,
   })
 
-  const { data: resources } = useQuery({
+  const { data: resourcesRaw } = useQuery({
     queryKey: ['status-page-resources', id],
     queryFn: () => statusPagesApi.resources.list(id!).then(r => r.data),
     enabled: !!id && activeTab === 'resources',
   })
+  const resources = resourcesRaw ? unwrapList(resourcesRaw) : undefined
 
-  const { data: announcements } = useQuery({
+  const { data: announcementsRaw } = useQuery({
     queryKey: ['status-page-announcements', id],
     queryFn: () => statusPagesApi.announcements.list(id!).then(r => r.data),
     enabled: !!id && activeTab === 'announcements',
   })
+  const announcements = announcementsRaw ? unwrapList(announcementsRaw) : undefined
 
-  const { data: subscribers } = useQuery({
+  const { data: subscribersRaw } = useQuery({
     queryKey: ['status-page-subscribers', id],
     queryFn: () => statusPagesApi.subscribers.list(id!).then(r => r.data),
     enabled: !!id && activeTab === 'subscribers',
   })
+  const subscribers = subscribersRaw ? unwrapList(subscribersRaw) : undefined
 
   const { data: monitorsData } = useQuery({
     queryKey: ['monitors-list'],
@@ -124,14 +127,14 @@ export default function StatusPageDetailPage() {
                   <div className="flex items-center gap-3">
                     <span className="text-gray-400 text-sm">#{r.order}</span>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{r.display_name || r.monitor?.name || r.monitor_group?.name}</p>
+                      <p className="text-sm font-medium text-gray-800">{r.display_name || r.monitor_name || r.group_name}</p>
                       <p className="text-xs text-gray-400">{r.monitor ? 'Monitor' : 'Groupe'}</p>
                     </div>
-                    {r.monitor && (
+                    {r.monitor_status && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        r.monitor.status === 'operational' ? 'bg-emerald-100 text-emerald-700' :
-                        r.monitor.status === 'offline' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                      }`}>{r.monitor.status}</span>
+                        r.monitor_status === 'operational' ? 'bg-emerald-100 text-emerald-700' :
+                        r.monitor_status === 'offline' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>{r.monitor_status}</span>
                     )}
                   </div>
                   <button onClick={() => removeResourceMutation.mutate(r.id)}
@@ -155,11 +158,11 @@ export default function StatusPageDetailPage() {
               + Nouvelle annonce
             </button>
           </div>
-          {!announcements?.results || announcements.results.length === 0 ? (
+          {!announcements || announcements.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">Aucune annonce.</div>
           ) : (
             <div className="space-y-3">
-              {announcements.results.map(a => (
+              {announcements.map(a => (
                 <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -169,7 +172,7 @@ export default function StatusPageDetailPage() {
                           {a.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">{a.message}</p>
+                      <p className="text-sm text-gray-600">{a.content}</p>
                     </div>
                     <span className="text-xs text-gray-400 shrink-0">{formatDate(a.created_at)}</span>
                   </div>
@@ -184,9 +187,9 @@ export default function StatusPageDetailPage() {
       {activeTab === 'subscribers' && (
         <div>
           <p className="text-sm text-gray-500 mb-4">
-            {subscribers?.count ?? 0} abonné(s) vérifié(s)
+            {subscribers?.length ?? 0} abonné(s) vérifié(s)
           </p>
-          {!subscribers?.results || subscribers.results.length === 0 ? (
+          {!subscribers || subscribers.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">Aucun abonné.</div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -200,15 +203,15 @@ export default function StatusPageDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {subscribers.results.map(s => (
+                  {subscribers.map(s => (
                     <tr key={s.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3 text-gray-700">{s.email}</td>
                       <td className="px-5 py-3">
-                        <span className={`text-xs font-medium ${s.verified ? 'text-emerald-600' : 'text-yellow-600'}`}>
-                          {s.verified ? '✓ Oui' : '⏳ En attente'}
+                        <span className={`text-xs font-medium ${s.is_verified ? 'text-emerald-600' : 'text-yellow-600'}`}>
+                          {s.is_verified ? '✓ Oui' : '⏳ En attente'}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{formatDate(s.created_at)}</td>
+                      <td className="px-5 py-3 text-gray-500">{formatDate(s.subscribed_at)}</td>
                       <td className="px-5 py-3 text-right">
                         <button onClick={() => removeSubscriberMutation.mutate(s.id)}
                           className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors">
