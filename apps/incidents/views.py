@@ -112,13 +112,16 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
         "assign":          "incident:assign",
         "notes":           "incident:read",
         "timeline":        "incident:read",
-        "get_postmortem":  "incident:read",
-        "upsert_postmortem": "incident:postmortem",
+        "postmortem":      "incident:read",
     }
 
     def get_permissions(self):
-        if self.action in ("notes", "timeline") and self.request.method == "POST":
+        if self.action == "notes" and self.request.method == "POST":
             return [IsAuthenticated(), RequirePermission("incident:update")]
+        if self.action == "timeline" and self.request.method == "POST":
+            return [IsAuthenticated(), RequirePermission("incident:update")]
+        if self.action == "postmortem" and self.request.method in ("POST", "PUT"):
+            return [IsAuthenticated(), RequirePermission("incident:postmortem")]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -264,27 +267,27 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
     # Postmortem
     # ------------------------------------------------------------------
 
-    @extend_schema(tags=["Incidents"], summary="Get incident postmortem")
-    @action(detail=True, methods=["get"], url_path="postmortem")
-    def get_postmortem(self, request, pk=None):
-        incident = self.get_object()
-        try:
-            pm = incident.postmortem
-        except IncidentPostmortem.DoesNotExist:
-            return Response(
-                {"detail": "No postmortem for this incident."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        return Response(IncidentPostmortemSerializer(pm).data)
-
+    @extend_schema(tags=["Incidents"], summary="Get incident postmortem", methods=["GET"])
     @extend_schema(
         tags=["Incidents"],
         summary="Create or update incident postmortem",
         request=IncidentPostmortemSerializer,
+        methods=["POST", "PUT"],
     )
-    @action(detail=True, methods=["post", "put"], url_path="postmortem")
-    def upsert_postmortem(self, request, pk=None):
+    @action(detail=True, methods=["get", "post", "put"], url_path="postmortem")
+    def postmortem(self, request, pk=None):
         incident = self.get_object()
+
+        if request.method == "GET":
+            try:
+                pm = incident.postmortem
+            except IncidentPostmortem.DoesNotExist:
+                return Response(
+                    {"detail": "No postmortem for this incident."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            return Response(IncidentPostmortemSerializer(pm).data)
+
         try:
             pm = incident.postmortem
             serializer = IncidentPostmortemSerializer(pm, data=request.data, partial=True)
@@ -293,7 +296,6 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
 
         serializer.is_valid(raise_exception=True)
 
-        # Publish if requested (accept both publish and published from clients)
         publish = request.data.get("publish", False) or request.data.get("published", False)
         extra = {}
         if publish:
