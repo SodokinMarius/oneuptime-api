@@ -13,6 +13,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.maintenance.models import MaintenanceStatus, ScheduledMaintenance
+from apps.maintenance.services import handle_maintenance_ended, handle_maintenance_started
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class Command(BaseCommand):
         for mw in to_start:
             mw.status = MaintenanceStatus.IN_PROGRESS
             mw.save(update_fields=["status", "updated_at"])
-            self._emit("scheduled_maintenance.started", mw)
+            handle_maintenance_started(mw)
             self.stdout.write(f"  → Started: {mw.title}")
             started += 1
 
@@ -44,7 +45,7 @@ class Command(BaseCommand):
         for mw in to_end:
             mw.status = MaintenanceStatus.COMPLETED
             mw.save(update_fields=["status", "updated_at"])
-            self._emit("scheduled_maintenance.ended", mw)
+            handle_maintenance_ended(mw)
             self.stdout.write(f"  ✓ Completed: {mw.title}")
             ended += 1
 
@@ -52,19 +53,3 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f"Maintenance: {started} started, {ended} completed.")
             )
-
-    @staticmethod
-    def _emit(event_type: str, maintenance):
-        try:
-            from apps.maintenance.serializers import ScheduledMaintenanceSerializer
-            from apps.webhooks.services import WebhookService
-            WebhookService.emit(
-                tenant=maintenance.tenant,
-                project=maintenance.project,
-                event_type=event_type,
-                payload={
-                    "scheduled_maintenance": ScheduledMaintenanceSerializer(maintenance).data
-                },
-            )
-        except Exception as exc:
-            logger.warning("Webhook emit failed for %s: %s", event_type, exc)

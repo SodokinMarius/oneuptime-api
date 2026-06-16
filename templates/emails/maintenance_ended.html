@@ -1,0 +1,20 @@
+{% extends "emails/base.html" %}
+{% block title %}Maintenance terminée — {{ brand_name }}{% endblock %}
+{% block content %}
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">
+  Maintenance terminée
+</h2>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#334155;">
+  La maintenance planifiée <strong>{{ maintenance_title }}</strong> est terminée.
+  Les services devraient être de retour en service normal.
+</p>
+<p style="margin:0 0 24px;font-size:13px;color:#64748b;">
+  Fin : {{ ends_at }}
+</p>
+<p style="margin:0 0 24px;text-align:center;">
+  <a href="{{ status_page_url }}"
+     style="display:inline-block;padding:12px 24px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
+    Voir la status page
+  </a>
+</p>
+{% endblock %}

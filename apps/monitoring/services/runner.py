@@ -173,7 +173,14 @@ def _update_monitor_status(monitor: Monitor, check: MonitorCheck) -> None:
     """
     Update monitor.status based on consecutive failure/success counts,
     and open/close incidents accordingly.
+
+    During an active maintenance window, failures are recorded but do not
+    transition the monitor offline or open incidents.
     """
+    from apps.maintenance.services import is_monitor_under_maintenance
+
+    under_maintenance = is_monitor_under_maintenance(monitor)
+
     consecutive_failures = (
         MonitorCheck.objects.filter(monitor=monitor)
         .order_by("-checked_at")[: monitor.retries]
@@ -188,9 +195,10 @@ def _update_monitor_status(monitor: Monitor, check: MonitorCheck) -> None:
     new_status = monitor.status
 
     if all_failed and monitor.status == MonitorStatus.OPERATIONAL:
-        new_status = MonitorStatus.OFFLINE
-        if monitor.alert_on_failure:
-            _open_incident(monitor, check)
+        if not under_maintenance:
+            new_status = MonitorStatus.OFFLINE
+            if monitor.alert_on_failure:
+                _open_incident(monitor, check)
 
     elif all_success and monitor.status == MonitorStatus.OFFLINE:
         new_status = MonitorStatus.OPERATIONAL
@@ -255,3 +263,44 @@ def _close_incident(monitor: Monitor) -> None:
         resolved_at=timezone.now(),
     )
     Monitor.objects.filter(pk=monitor.pk).update(current_incident=None)
+
+
+def reevaluate_monitors_after_maintenance(maintenance) -> None:
+    """Open incidents for monitors still failing when a maintenance window ends."""
+    from apps.maintenance.services import monitors_for_maintenance
+
+    for monitor in monitors_for_maintenance(maintenance):
+        reevaluate_monitor_incident(monitor)
+
+
+def reevaluate_monitor_incident(monitor: Monitor) -> None:
+    """If checks are still failing after maintenance, mark offline and open incident."""
+    from apps.maintenance.services import is_monitor_under_maintenance
+
+    if is_monitor_under_maintenance(monitor):
+        return
+    if not monitor.alert_on_failure or monitor.current_incident_id:
+        return
+
+    recent = list(
+        MonitorCheck.objects.filter(monitor=monitor)
+        .order_by("-checked_at")[: monitor.retries]
+        .values_list("status", flat=True)
+    )
+    if len(recent) < monitor.retries:
+        return
+
+    all_failed = all(
+        s in (CheckStatus.FAILURE, CheckStatus.TIMEOUT, CheckStatus.ERROR)
+        for s in recent
+    )
+    if not all_failed:
+        return
+
+    if monitor.status != MonitorStatus.OFFLINE:
+        Monitor.objects.filter(pk=monitor.pk).update(status=MonitorStatus.OFFLINE)
+        monitor.status = MonitorStatus.OFFLINE
+
+    last_check = MonitorCheck.objects.filter(monitor=monitor).order_by("-checked_at").first()
+    if last_check:
+        _open_incident(monitor, last_check)

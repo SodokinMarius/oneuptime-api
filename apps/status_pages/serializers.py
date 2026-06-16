@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from core.serializers import TeamScopeSerializerMixin
 
+from apps.maintenance.models import ScheduledMaintenance
 from apps.status_pages.models import (
     StatusPage,
     StatusPageAnnouncement,
@@ -16,6 +17,7 @@ from apps.status_pages.models import (
 class StatusPageResourceSerializer(serializers.ModelSerializer):
     monitor_name = serializers.CharField(source="monitor.name", read_only=True, default=None)
     monitor_status = serializers.CharField(source="monitor.status", read_only=True, default=None)
+    display_status = serializers.SerializerMethodField()
     group_name = serializers.CharField(
         source="monitor_group.name", read_only=True, default=None
     )
@@ -25,10 +27,22 @@ class StatusPageResourceSerializer(serializers.ModelSerializer):
         fields = (
             "id", "monitor", "monitor_group",
             "display_name", "order",
-            "monitor_name", "monitor_status", "group_name",
+            "monitor_name", "monitor_status", "display_status", "group_name",
             "created_at",
         )
-        read_only_fields = ("id", "monitor_name", "monitor_status", "group_name", "created_at")
+        read_only_fields = (
+            "id", "monitor_name", "monitor_status", "display_status", "group_name", "created_at",
+        )
+
+    def get_display_status(self, obj) -> str | None:
+        monitor = obj.monitor
+        if monitor is None:
+            return None
+        from apps.maintenance.services import is_monitor_under_maintenance
+
+        if is_monitor_under_maintenance(monitor):
+            return "maintenance"
+        return monitor.status
 
     def validate(self, attrs):
         monitor = attrs.get("monitor")
@@ -98,6 +112,21 @@ class StatusPageSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer
         return obj.subscribers.filter(is_verified=True).count()
 
 
+class ScheduledMaintenancePublicSerializer(serializers.ModelSerializer):
+    """Active maintenance window exposed on the public status page."""
+
+    class Meta:
+        model = ScheduledMaintenance
+        fields = (
+            "id",
+            "title",
+            "description",
+            "starts_at",
+            "ends_at",
+            "monitors",
+        )
+
+
 class StatusPagePublicSerializer(serializers.ModelSerializer):
     """
     Public view of a status page — no authentication required.
@@ -105,14 +134,21 @@ class StatusPagePublicSerializer(serializers.ModelSerializer):
     """
     resources = StatusPageResourceSerializer(many=True, read_only=True)
     announcements = serializers.SerializerMethodField()
+    scheduled_maintenances = serializers.SerializerMethodField()
 
     class Meta:
         model = StatusPage
         fields = (
             "id", "name", "slug", "description",
             "logo_url", "primary_color", "custom_css",
-            "resources", "announcements",
+            "resources", "announcements", "scheduled_maintenances",
         )
+
+    def get_scheduled_maintenances(self, obj):
+        from apps.maintenance.services import visible_maintenances_for_status_page
+
+        qs = visible_maintenances_for_status_page(obj)
+        return ScheduledMaintenancePublicSerializer(qs, many=True).data
 
     def get_announcements(self, obj):
         now = timezone.now()

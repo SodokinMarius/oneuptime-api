@@ -36,12 +36,15 @@ class ScheduledMaintenanceViewSet(TeamScopedViewMixin, PermissionMixin, viewsets
         return self.scope_queryset_by_team(qs).order_by("-starts_at")
 
     def perform_create(self, serializer):
+        from apps.maintenance.services import emit_maintenance_webhook
+
         project = self.request.project
-        serializer.save(
+        maintenance = serializer.save(
             tenant=project.tenant,
             project=project,
             **self.team_save_kwargs(serializer),
         )
+        emit_maintenance_webhook("scheduled_maintenance.created", maintenance)
 
     @extend_schema(tags=["Maintenance"], summary="Cancel a scheduled maintenance window")
     @action(detail=True, methods=["post"])
