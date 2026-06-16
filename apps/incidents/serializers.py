@@ -111,4 +111,12 @@ class AssignIncidentSerializer(serializers.Serializer):
 
 class AddNoteSerializer(serializers.Serializer):
     content = serializers.CharField(min_length=1)
-    is_public = serializers.BooleanField(default=False)
+    is_public = serializers.BooleanField(default=False, required=False)
+    is_internal = serializers.BooleanField(default=False, required=False, write_only=True)
+
+    def validate(self, attrs):
+        if attrs.pop("is_internal", False):
+            attrs["is_public"] = False
+        elif "is_public" not in attrs:
+            attrs["is_public"] = False
+        return attrs

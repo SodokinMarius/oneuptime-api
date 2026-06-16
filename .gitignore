@@ -44,3 +44,8 @@ Thumbs.db
 # Personal notes
 TODO.md
 NOTES.md
+
+
+# Documentations
+docs/*
+scripts/*

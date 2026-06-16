@@ -45,16 +45,26 @@ class StatusPageResourceSerializer(serializers.ModelSerializer):
 
 
 class StatusPageAnnouncementSerializer(serializers.ModelSerializer):
+    message = serializers.CharField(source="content", write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = StatusPageAnnouncement
         fields = (
-            "id", "title", "content",
+            "id", "title", "content", "message",
             "starts_at", "ends_at", "is_active",
             "created_at", "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")
+        extra_kwargs = {
+            "content": {"required": False},
+            "starts_at": {"required": False},
+        }
 
     def validate(self, attrs):
+        if not attrs.get("content") and not (self.instance and self.instance.content):
+            raise serializers.ValidationError({"content": "This field is required."})
+        if not attrs.get("starts_at") and not (self.instance and self.instance.starts_at):
+            attrs["starts_at"] = timezone.now()
         starts = attrs.get("starts_at") or (self.instance.starts_at if self.instance else None)
         ends = attrs.get("ends_at") or (self.instance.ends_at if self.instance else None)
         if starts and ends and ends <= starts:
