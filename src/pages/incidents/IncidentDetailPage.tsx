@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { incidentsApi, type TimelineEntry } from '@/api/incidents'
+import { incidentsApi, unwrapIncidentList, type TimelineEntry } from '@/api/incidents'
 import { usersApi } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
@@ -20,6 +20,8 @@ export default function IncidentDetailPage() {
   const [timelineMsg, setTimelineMsg] = useState('')
   const [showAssign, setShowAssign] = useState(false)
   const [showPostmortem, setShowPostmortem] = useState(false)
+  const [noteError, setNoteError] = useState('')
+  const [timelineError, setTimelineError] = useState('')
 
   const { data: incident, isLoading } = useQuery({
     queryKey: ['incident', id],
@@ -27,26 +29,24 @@ export default function IncidentDetailPage() {
     enabled: !!id,
   })
 
-  const { data: notesRaw } = useQuery({
+  const { data: notesRaw, isError: notesError } = useQuery({
     queryKey: ['incident-notes', id],
     queryFn: () => incidentsApi.notes(id!).then(r => r.data),
-    enabled: !!id && activeTab === 'notes',
+    enabled: !!id,
   })
-  const notes = notesRaw
-    ? (Array.isArray(notesRaw) ? notesRaw : notesRaw.results)
-    : undefined
+  const notes = notesRaw ? unwrapIncidentList(notesRaw) : undefined
 
   const { data: timelineResponse } = useQuery({
     queryKey: ['incident-timeline', id],
     queryFn: () => incidentsApi.timeline.list(id!).then(r => r.data),
-    enabled: !!id && activeTab === 'timeline',
+    enabled: !!id,
   })
   const timelineEntries: TimelineEntry[] = timelineResponse?.timeline ?? []
 
   const { data: postmortem } = useQuery({
     queryKey: ['incident-postmortem', id],
     queryFn: () => incidentsApi.postmortem.get(id!).then(r => r.data).catch(() => null),
-    enabled: !!id && activeTab === 'postmortem',
+    enabled: !!id,
   })
 
   const ackMutation = useMutation({
@@ -59,11 +59,29 @@ export default function IncidentDetailPage() {
   })
   const noteMutation = useMutation({
     mutationFn: () => incidentsApi.addNote(id!, noteContent, noteInternal),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['incident-notes', id] }); setNoteContent('') },
+    onSuccess: (res) => {
+      qc.setQueryData(['incident-notes', id], (old: unknown) => {
+        const list = old ? unwrapIncidentList(old as any) : []
+        return [...list, res.data]
+      })
+      qc.invalidateQueries({ queryKey: ['incident-timeline', id] })
+      setNoteContent('')
+      setNoteError('')
+    },
+    onError: (err: any) => {
+      setNoteError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Impossible d\'ajouter la note.')
+    },
   })
   const timelineMutation = useMutation({
     mutationFn: () => incidentsApi.timeline.add(id!, timelineMsg),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['incident-timeline', id] }); setTimelineMsg('') },
+    onSuccess: (res) => {
+      qc.setQueryData(['incident-timeline', id], res.data)
+      setTimelineMsg('')
+      setTimelineError('')
+    },
+    onError: (err: any) => {
+      setTimelineError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Impossible d\'ajouter à la timeline.')
+    },
   })
 
   if (isLoading) return (
@@ -154,6 +172,8 @@ export default function IncidentDetailPage() {
               </button>
             </div>
           </div>
+          {noteError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{noteError}</p>}
+          {notesError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">Erreur lors du chargement des notes.</p>}
           {(!notes || notes.length === 0) ? (
             <p className="text-center text-gray-400 py-8 text-sm">Aucune note pour l'instant.</p>
           ) : (
@@ -190,6 +210,7 @@ export default function IncidentDetailPage() {
               {timelineMutation.isPending ? '...' : 'Ajouter'}
             </button>
           </div>
+          {timelineError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{timelineError}</p>}
           {timelineEntries.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">Timeline vide.</p>
           ) : (
@@ -247,8 +268,13 @@ export default function IncidentDetailPage() {
                 { label: 'Cause racine', value: postmortem.root_cause },
                 { label: 'Impact', value: postmortem.impact },
                 { label: 'Timeline', value: postmortem.timeline },
-                { label: 'Actions correctives', value: postmortem.action_items },
-              ].map(field => field.value && (
+                {
+                  label: 'Actions correctives',
+                  value: Array.isArray(postmortem.action_items)
+                    ? postmortem.action_items.join('\n')
+                    : postmortem.action_items,
+                },
+              ].filter(field => field.value).map(field => (
                 <div key={field.label}>
                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{field.label}</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{field.value}</p>
@@ -324,8 +350,11 @@ function PostmortemForm({ incidentId, existing, onClose }: { incidentId: string;
 
   const mutation = useMutation({
     mutationFn: () => incidentsApi.postmortem.save(incidentId, form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['incident-postmortem', incidentId] }); onClose() },
-    onError: (err: any) => setError(err.response?.data?.errors?.[0]?.message || 'Erreur.'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['incident-postmortem', incidentId] })
+      onClose()
+    },
+    onError: (err: any) => setError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Erreur lors de l\'enregistrement.'),
   })
 
   const fields = [

@@ -17,15 +17,19 @@ export interface TimelineEntry {
 
 export interface Postmortem {
   id: string
-  incident: string
   summary: string
   root_cause: string
   impact: string
   timeline: string
-  action_items: string
+  action_items: string | string[]
   published: boolean
+  published_at?: string | null
   created_at: string
   updated_at: string
+}
+
+export function unwrapIncidentList<T>(data: T[] | PaginatedResponse<T>): T[] {
+  return Array.isArray(data) ? data : data.results
 }
 
 export const incidentsApi = {
@@ -84,8 +88,13 @@ export const incidentsApi = {
   postmortem: {
     get: (id: string) =>
       client.get<Postmortem>(`/incidents/${id}/postmortem`),
-    save: (id: string, data: Partial<Postmortem>) =>
-      client.post<Postmortem>(`/incidents/${id}/postmortem`, data),
+    save: (id: string, data: Partial<Postmortem> & { published?: boolean }) => {
+      const { published, ...rest } = data
+      return client.post<Postmortem>(`/incidents/${id}/postmortem`, {
+        ...rest,
+        publish: published ?? false,
+      })
+    },
   },
 
   states: {
