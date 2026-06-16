@@ -156,12 +156,13 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
             state = IncidentState.objects.filter(
                 project=project, name="triggered"
             ).first()
-        serializer.save(
+        incident = serializer.save(
             tenant=project.tenant,
             project=project,
             state=state,
             **self.team_save_kwargs(serializer),
         )
+        services.emit_incident_created(incident)
 
     # ------------------------------------------------------------------
     # Lifecycle actions

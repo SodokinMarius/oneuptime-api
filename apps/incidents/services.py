@@ -10,6 +10,11 @@ from django.db import transaction
 from django.utils import timezone
 
 
+def emit_incident_created(incident):
+    """Fire webhook when an incident is created (manual or automatic)."""
+    _emit("incident.created", incident)
+
+
 def acknowledge_incident(incident, user):
     """Transition incident to 'acknowledged' state."""
     from apps.incidents.models import IncidentState

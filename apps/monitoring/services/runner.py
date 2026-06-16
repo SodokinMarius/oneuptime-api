@@ -193,6 +193,7 @@ def _update_monitor_status(monitor: Monitor, check: MonitorCheck) -> None:
     all_success = all(s == CheckStatus.SUCCESS for s in consecutive_failures)
 
     new_status = monitor.status
+    previous_status = monitor.status
 
     if all_failed and monitor.status == MonitorStatus.OPERATIONAL:
         if not under_maintenance:
@@ -212,6 +213,11 @@ def _update_monitor_status(monitor: Monitor, check: MonitorCheck) -> None:
     )
     monitor.status = new_status
     monitor.last_check_at = check.checked_at
+
+    if new_status != previous_status:
+        from apps.monitoring.services.webhooks import emit_monitor_status_changed
+
+        emit_monitor_status_changed(monitor, previous_status)
 
 
 def _open_incident(monitor: Monitor, check: MonitorCheck) -> None:
@@ -242,6 +248,10 @@ def _open_incident(monitor: Monitor, check: MonitorCheck) -> None:
     check.save(update_fields=["triggered_incident"])
 
     Monitor.objects.filter(pk=monitor.pk).update(current_incident=incident)
+
+    from apps.incidents.services import emit_incident_created
+
+    emit_incident_created(incident)
 
 
 def _close_incident(monitor: Monitor) -> None:
@@ -298,8 +308,12 @@ def reevaluate_monitor_incident(monitor: Monitor) -> None:
         return
 
     if monitor.status != MonitorStatus.OFFLINE:
+        previous_status = monitor.status
         Monitor.objects.filter(pk=monitor.pk).update(status=MonitorStatus.OFFLINE)
         monitor.status = MonitorStatus.OFFLINE
+        from apps.monitoring.services.webhooks import emit_monitor_status_changed
+
+        emit_monitor_status_changed(monitor, previous_status)
 
     last_check = MonitorCheck.objects.filter(monitor=monitor).order_by("-checked_at").first()
     if last_check:
