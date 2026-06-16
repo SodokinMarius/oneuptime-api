@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { auditApi } from '@/api/audit'
 import { formatDate } from '@/utils/format'
 
+const PAGE_SIZE = 30
 const ACTOR_TYPES = ['', 'user', 'api_key', 'system']
 const RESOURCE_TYPES = ['', 'incident', 'monitor', 'role', 'team', 'project', 'webhook', 'api_key', 'user']
 
@@ -19,7 +20,7 @@ export default function AuditPage() {
     queryFn: () => auditApi.list({
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
       page: String(page),
-      page_size: '30',
+      page_size: String(PAGE_SIZE),
     }).then(r => r.data),
   })
 
@@ -44,7 +45,10 @@ export default function AuditPage() {
   }
 
   const entries = data?.results ?? []
-  const totalPages = data?.count ? Math.max(1, Math.ceil(data.count / 30)) : 1
+  const totalCount = data?.count
+  const totalPages = totalCount != null ? Math.max(1, Math.ceil(totalCount / PAGE_SIZE)) : null
+  const hasNextPage = totalPages != null ? page < totalPages : Boolean(data?.next)
+  const hasPrevPage = page > 1
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -153,18 +157,33 @@ export default function AuditPage() {
                 </tbody>
               </table>
             </div>
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-gray-200">
-                <span className="text-sm text-gray-500">{data?.count} entrées au total</span>
+            {/* Pagination — visible dès qu'il y a des entrées */}
+            {entries.length > 0 && (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <span className="text-sm text-gray-500">
+                  {totalCount != null
+                    ? `${totalCount} entrée${totalCount > 1 ? 's' : ''} au total`
+                    : `${entries.length} entrée${entries.length > 1 ? 's' : ''} affichée${entries.length > 1 ? 's' : ''}`}
+                  {totalPages != null && (
+                    <span className="text-gray-400"> · {PAGE_SIZE} par page</span>
+                  )}
+                </span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={!hasPrevPage}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-white transition-colors"
+                  >
                     ← Préc.
                   </button>
-                  <span className="text-sm text-gray-600">Page {page} / {totalPages}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+                  <span className="text-sm text-gray-600 min-w-[7rem] text-center">
+                    {totalPages != null ? `Page ${page} / ${totalPages}` : `Page ${page}`}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={!hasNextPage}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-white transition-colors"
+                  >
                     Suiv. →
                   </button>
                 </div>
