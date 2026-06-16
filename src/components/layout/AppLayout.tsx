@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { authStore } from '@/store/auth'
 import { authApi } from '@/api/auth'
+import ProjectSwitcher from '@/components/layout/ProjectSwitcher'
 import {
   IconLayoutDashboard,
   IconActivity,
@@ -102,6 +103,8 @@ export default function AppLayout() {
 
       {/* Divider */}
       <div className="mx-4 h-px bg-white/8 mb-2 shrink-0" />
+
+      <ProjectSwitcher collapsed={desktopCollapsed} />
 
       {/* Nav */}
       <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto py-1">

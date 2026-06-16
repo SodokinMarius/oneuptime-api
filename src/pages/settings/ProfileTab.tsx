@@ -127,6 +127,14 @@ export default function ProfileTab() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-base font-semibold text-gray-900 mb-4">Contexte de session</h3>
         <div className="space-y-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-500 shrink-0">Organisation</span>
+            <span className="text-gray-700 text-right truncate">{user?.tenant?.name ?? '—'}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-500 shrink-0">Projet actif</span>
+            <span className="text-gray-700 text-right truncate">{authStore.getProjectName() ?? user?.default_project?.name ?? '—'}</span>
+          </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Tenant ID</span>
             <span className="font-mono text-gray-700 text-xs bg-gray-50 px-2 py-1 rounded">{authStore.getTenantId() ?? '—'}</span>

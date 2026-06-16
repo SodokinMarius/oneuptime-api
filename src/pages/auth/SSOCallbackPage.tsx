@@ -41,9 +41,12 @@ export default function SSOCallbackPage() {
         const { data: me } = await authApi.me()
         authStore.save(access, refresh, me)
         if (me.tenant?.id && (projectId || me.default_project?.id)) {
+          const pid = projectId || me.default_project!.id
           authStore.saveContext(
             me.tenant.id,
-            projectId || me.default_project!.id,
+            pid,
+            me.default_project?.name,
+            me.default_project?.slug,
           )
         }
         navigate('/dashboard', { replace: true })

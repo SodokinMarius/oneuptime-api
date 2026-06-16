@@ -31,7 +31,12 @@ export default function LoginPage() {
       try {
         const { data: me } = await authApi.me()
         if (me.tenant?.id && me.default_project?.id) {
-          authStore.saveContext(me.tenant.id, me.default_project.id)
+          authStore.saveContext(
+            me.tenant.id,
+            me.default_project.id,
+            me.default_project.name,
+            me.default_project.slug,
+          )
         }
       } catch { /* non-bloquant */ }
       navigate('/dashboard')

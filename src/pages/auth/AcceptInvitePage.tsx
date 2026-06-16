@@ -30,7 +30,12 @@ export default function AcceptInvitePage() {
         try {
           const { data: me } = await authApi.me()
           if (me.default_project?.id) {
-            authStore.saveContext(data.tenant.id, me.default_project.id)
+            authStore.saveContext(
+              data.tenant.id,
+              me.default_project.id,
+              me.default_project.name,
+              me.default_project.slug,
+            )
           } else {
             authStore.saveContext(data.tenant.id, '')
           }
