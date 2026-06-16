@@ -4,8 +4,18 @@ import { auditApi } from '@/api/audit'
 import { formatDate } from '@/utils/format'
 
 const PAGE_SIZE = 30
-const ACTOR_TYPES = ['', 'user', 'api_key', 'system']
+const ACTOR_TYPES = ['', 'user', 'api_key', 'system'] as const
+const ACTOR_TYPE_LABELS: Record<string, string> = {
+  user: 'Utilisateur',
+  api_key: 'Clé API',
+  system: 'Automatique',
+  scim: 'SCIM',
+}
 const RESOURCE_TYPES = ['', 'incident', 'monitor', 'role', 'team', 'project', 'webhook', 'api_key', 'user']
+
+function actorTypeLabel(type: string) {
+  return ACTOR_TYPE_LABELS[type] ?? type
+}
 
 export default function AuditPage() {
   const [filters, setFilters] = useState({
@@ -95,7 +105,7 @@ export default function AuditPage() {
         </select>
         <select value={filters.actor_type} onChange={e => { setFilters(f => ({ ...f, actor_type: e.target.value })); setPage(1) }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {ACTOR_TYPES.map(t => <option key={t} value={t}>{t || 'Tous les acteurs'}</option>)}
+          {ACTOR_TYPES.map(t => <option key={t} value={t}>{t ? actorTypeLabel(t) : 'Tous les acteurs'}</option>)}
         </select>
         <input type="date" value={filters.since} onChange={e => { setFilters(f => ({ ...f, since: e.target.value })); setPage(1) }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -142,16 +152,23 @@ export default function AuditPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-gray-800 truncate max-w-[220px]" title={entry.actor_label}>
+                            {entry.actor_label}
+                          </span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded w-fit ${
                             entry.actor_type === 'user' ? 'bg-blue-100 text-blue-600' :
                             entry.actor_type === 'api_key' ? 'bg-purple-100 text-purple-600' :
                             'bg-gray-100 text-gray-500'
-                          }`}>{entry.actor_type}</span>
-                          <span className="text-gray-700 truncate max-w-[140px]">{entry.actor_label}</span>
+                          }`}>{actorTypeLabel(entry.actor_type)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 font-mono text-xs">{entry.ip_address ?? '—'}</td>
+                      <td
+                        className="px-4 py-3 text-gray-400 font-mono text-xs"
+                        title={entry.ip_address ? undefined : entry.actor_type === 'system' ? 'Action automatique (scheduler) — pas d\'IP' : 'IP non enregistrée'}
+                      >
+                        {entry.ip_address ?? '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
