@@ -1,24 +1,39 @@
 """Serializers for audit resources."""
 from rest_framework import serializers
 
-from apps.audit.models import AuditLog, DataType, RetentionPolicy
+from apps.audit.models import ActorType, AuditLog, DataType, RetentionPolicy
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source="project.name", read_only=True, default=None)
+    actor_label = serializers.SerializerMethodField()
+    hash = serializers.CharField(source="record_hash", read_only=True)
 
     class Meta:
         model = AuditLog
         fields = (
-            "id", "actor_id", "actor_type", "action",
+            "id", "actor_id", "actor_type", "actor_label", "action",
             "resource_type", "resource_id",
             "old_value", "new_value",
             "ip_address", "user_agent",
-            "prev_hash", "record_hash",
+            "prev_hash", "record_hash", "hash",
             "project_name",
             "created_at",
         )
         read_only_fields = fields
+
+    def get_actor_label(self, obj) -> str:
+        if obj.actor_type == ActorType.USER:
+            from apps.accounts.models import User
+            email = User.objects.filter(id=obj.actor_id).values_list("email", flat=True).first()
+            return email or str(obj.actor_id)
+        if obj.actor_type == ActorType.API_KEY:
+            from apps.rbac.models import ApiKey
+            name = ApiKey.objects.filter(id=obj.actor_id).values_list("name", flat=True).first()
+            return name or str(obj.actor_id)
+        if obj.actor_type == ActorType.SYSTEM:
+            return "system"
+        return str(obj.actor_id)
 
 
 class RetentionPolicySerializer(serializers.ModelSerializer):

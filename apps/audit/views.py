@@ -3,6 +3,7 @@ import csv
 import io
 import json
 
+from django.db import models
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -13,6 +14,7 @@ from apps.audit.models import AuditLog, RetentionPolicy
 from apps.audit.serializers import AuditLogSerializer, RetentionPolicySerializer
 from apps.audit.services import AuditService
 from apps.rbac.permissions import PermissionMixin
+from core.pagination import AuditLogPageNumberPagination
 
 
 class AuditLogViewSet(
@@ -28,6 +30,7 @@ class AuditLogViewSet(
     The `verify` action checks the hash-chain integrity for the current tenant.
     """
     serializer_class = AuditLogSerializer
+    pagination_class = AuditLogPageNumberPagination
     permission_map = {
         "list":     "audit_log:read",
         "retrieve": "audit_log:read",
@@ -42,16 +45,18 @@ class AuditLogViewSet(
 
         qs = AuditLog.objects.filter(tenant=tenant).select_related("project")
 
-        # Scope to the current project if X-Project-Id was provided
+        # Include project-specific entries and tenant-wide entries (project=NULL)
         project = getattr(self.request, "project", None)
         if project and self.request.query_params.get("project_scoped", "true") == "true":
-            qs = qs.filter(project=project)
+            qs = qs.filter(
+                models.Q(project=project) | models.Q(project__isnull=True)
+            )
 
         params = self.request.query_params
         if action_filter := params.get("action"):
             qs = qs.filter(action__icontains=action_filter)
         if resource_type := params.get("resource_type"):
-            qs = qs.filter(resource_type=resource_type)
+            qs = qs.filter(resource_type__iexact=resource_type)
         if actor_type := params.get("actor_type"):
             qs = qs.filter(actor_type=actor_type)
         if since := params.get("since"):

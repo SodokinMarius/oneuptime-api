@@ -128,7 +128,16 @@ class AuditService:
             return log
 
     @classmethod
-    def record_auto(cls, tenant, action, resource_type="", resource_id=None, old=None, new=None):
+    def record_auto(
+        cls,
+        tenant,
+        action,
+        resource_type="",
+        resource_id=None,
+        old=None,
+        new=None,
+        project=None,
+    ):
         """Shortcut for signal-based recording — uses thread-local actor."""
         actor = cls.get_current_actor()
         if actor is None:
@@ -138,7 +147,7 @@ class AuditService:
         else:
             actor_id, actor_type = cls._resolve_actor(actor)
 
-        from apps.audit.models import ActorType, AuditLog
+        from apps.audit.models import AuditLog
         with transaction.atomic():
             prev = (
                 AuditLog.objects.filter(tenant=tenant)
@@ -165,6 +174,7 @@ class AuditService:
 
             log = AuditLog(
                 tenant=tenant,
+                project=project,
                 actor_id=actor_id or tenant.id,
                 actor_type=actor_type,
                 action=action,

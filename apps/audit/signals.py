@@ -21,7 +21,7 @@ from django.dispatch import receiver
 logger = logging.getLogger(__name__)
 
 
-def _record(tenant, action, resource_type, resource_id, old=None, new=None):
+def _record(tenant, action, resource_type, resource_id, old=None, new=None, project=None):
     """Fire-and-forget audit record. Never raises."""
     try:
         from apps.audit.services import AuditService
@@ -32,6 +32,7 @@ def _record(tenant, action, resource_type, resource_id, old=None, new=None):
             resource_id=resource_id,
             old=old,
             new=new,
+            project=project,
         )
     except Exception as exc:
         logger.warning("Audit signal failed for %s.%s: %s", resource_type, action, exc)
@@ -59,6 +60,7 @@ def on_monitor_save(sender, instance, created, **kwargs):
         resource_type="Monitor",
         resource_id=instance.id,
         new={"name": instance.name, "type": instance.type, "url": instance.url},
+        project=instance.project,
     )
 
 
@@ -70,6 +72,7 @@ def on_monitor_delete(sender, instance, **kwargs):
         resource_type="Monitor",
         resource_id=instance.id,
         old={"name": instance.name},
+        project=instance.project,
     )
 
 
@@ -90,6 +93,7 @@ def on_incident_save(sender, instance, created, **kwargs):
             "state": instance.state.name if instance.state_id else None,
             "severity": instance.severity.name if instance.severity_id else None,
         },
+        project=instance.project,
     )
 
 
@@ -106,6 +110,7 @@ def on_apikey_save(sender, instance, created, **kwargs):
             resource_type="ApiKey",
             resource_id=instance.id,
             new={"name": instance.name, "prefix": instance.key_prefix},
+            project=instance.project,
         )
     elif instance.revoked_at:
         _record(
@@ -113,6 +118,7 @@ def on_apikey_save(sender, instance, created, **kwargs):
             action="api_key.revoke",
             resource_type="ApiKey",
             resource_id=instance.id,
+            project=instance.project,
         )
 
 
@@ -131,6 +137,7 @@ def on_role_save(sender, instance, created, **kwargs):
         resource_type="Role",
         resource_id=instance.id,
         new={"name": instance.name, "permissions": instance.permissions},
+        project=instance.project,
     )
 
 
@@ -142,6 +149,7 @@ def on_role_delete(sender, instance, **kwargs):
         resource_type="Role",
         resource_id=instance.id,
         old={"name": instance.name},
+        project=instance.project,
     )
 
 

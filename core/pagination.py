@@ -1,5 +1,5 @@
 """Custom pagination classes for the OneUptime API."""
-from rest_framework.pagination import CursorPagination
+from rest_framework.pagination import CursorPagination, PageNumberPagination
 
 
 class CreatedAtCursorPagination(CursorPagination):
@@ -14,5 +14,13 @@ class CreatedAtCursorPagination(CursorPagination):
     """
 
     ordering = "-created_at"
+    page_size_query_param = "page_size"
+    max_page_size = 500
+
+
+class AuditLogPageNumberPagination(PageNumberPagination):
+    """Page-number pagination for the audit log UI (supports page + count)."""
+
+    page_size = 30
     page_size_query_param = "page_size"
     max_page_size = 500
