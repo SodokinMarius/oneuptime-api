@@ -12,6 +12,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { formatRelative } from '@/utils/format'
 import type { MonitorType } from '@/types'
 import MonitorForm from './MonitorForm'
+import { PageShell } from '@/components/ui/PageShell'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Spinner } from '@/components/ui/Spinner'
 import {
   IconPlus,
   IconSearch,
@@ -64,24 +67,17 @@ export default function MonitorsPage() {
   const monitors = data?.results ?? []
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 className="page-header">Monitors</h2>
-          <p className="page-subtext">
-            {data?.count ?? 0} monitor{(data?.count ?? 0) !== 1 ? 's' : ''} configuré{(data?.count ?? 0) !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="btn-primary w-full sm:w-auto"
-        >
-          <IconPlus size={16} />
-          Nouveau monitor
-        </button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Monitors"
+        subtitle={`${data?.count ?? 0} monitor${(data?.count ?? 0) !== 1 ? 's' : ''} configuré${(data?.count ?? 0) !== 1 ? 's' : ''}`}
+        actions={
+          <button onClick={() => setShowCreate(true)} className="btn-primary w-full sm:w-auto">
+            <IconPlus size={16} />
+            Nouveau monitor
+          </button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -114,12 +110,7 @@ export default function MonitorsPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Chargement…</p>
-          </div>
-        </div>
+        <Spinner label="Chargement…" />
       ) : monitors.length === 0 ? (
         <EmptyState
           icon={<IconMonitor size={24} />}
@@ -133,8 +124,8 @@ export default function MonitorsPage() {
           }
         />
       ) : (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="table-wrap">
+          <div className="table-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
@@ -222,6 +213,6 @@ export default function MonitorsPage() {
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau monitor" size="lg">
         <MonitorForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['monitors'] }) }} />
       </Modal>
-    </div>
+    </PageShell>
   )
 }

@@ -49,19 +49,19 @@ function RoleForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nom du rôle *</label>
+        <label className="label">Nom du rôle *</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="Développeur, Ops, Viewer..." />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="label">Description</label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="input-field" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+        <label className="label">Permissions</label>
 
         {/* Quick toggle: all */}
         <button type="button" onClick={() => setForm(f => ({ ...f, permissions: ['*'] }))}
@@ -141,7 +141,7 @@ export default function RolesTab() {
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">{roles?.length ?? 0} rôle(s)</p>
         <button onClick={() => setShowCreate(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          className="btn-primary">
           + Nouveau rôle
         </button>
       </div>

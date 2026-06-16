@@ -40,32 +40,32 @@ export default function IncidentForm({ onSuccess }: Props) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+        <label className="label">Titre *</label>
         <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="API de paiement inaccessible" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="label">Description</label>
         <textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="input-field resize-none"
           placeholder="Décrivez le problème..." />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Sévérité</label>
+          <label className="label">Sévérité</label>
           <select value={form.severity_id} onChange={e => setForm({ ...form, severity_id: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="input-field">
             <option value="">Sélectionner...</option>
             {severities?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">État initial</label>
+          <label className="label">État initial</label>
           <select value={form.state_id} onChange={e => setForm({ ...form, state_id: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="input-field">
             <option value="">Sélectionner...</option>
             {states?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>

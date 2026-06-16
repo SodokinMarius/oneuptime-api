@@ -35,9 +35,9 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+        <label className="label">Rôle</label>
         <select value={form.role_id} onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="input-field">
           <option value="">Sélectionner un rôle...</option>
           {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
@@ -49,15 +49,15 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Type de ressource</label>
+        <label className="label">Type de ressource</label>
         <select value={form.resource_type} onChange={e => setForm(f => ({ ...f, resource_type: e.target.value }))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="input-field">
           <option value="">Sélectionner un type...</option>
           {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="label">
           ID de ressource <span className="text-gray-400 font-normal">(vide = toutes les ressources)</span>
         </label>
         <input value={form.resource_id} onChange={e => setForm(f => ({ ...f, resource_id: e.target.value }))}
@@ -65,7 +65,7 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
           placeholder="UUID optionnel" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Effet</label>
+        <label className="label">Effet</label>
         <div className="flex gap-3">
           {(['allow', 'deny'] as const).map(e => (
             <label key={e} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
@@ -80,9 +80,9 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="flex justify-end gap-2 pt-2">
-        <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">Annuler</button>
+        <button onClick={onClose} className="btn-ghost">Annuler</button>
         <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.role_id || !form.resource_type}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+          className="px-4 py-2 btn-primary disabled:opacity-50">
           {mutation.isPending ? 'Création...' : 'Créer la politique'}
         </button>
       </div>

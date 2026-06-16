@@ -6,6 +6,11 @@ import { usersApi } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
 import { Modal } from '@/components/ui/Modal'
+import { PageShell } from '@/components/ui/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Spinner } from '@/components/ui/Spinner'
+import { Tabs } from '@/components/ui/Tabs'
+import { IconChevronLeft } from '@/components/ui/Icons'
 import { formatDate, formatRelative } from '@/utils/format'
 
 type Tab = 'notes' | 'timeline' | 'postmortem'
@@ -84,11 +89,7 @@ export default function IncidentDetailPage() {
     },
   })
 
-  if (isLoading) return (
-    <div className="flex justify-center py-20">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (isLoading) return <Spinner label="Chargement…" />
   if (!incident) return null
 
   const isResolved = incident.is_resolved || incident.state_name === 'resolved'
@@ -99,81 +100,66 @@ export default function IncidentDetailPage() {
   ]
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start gap-2 mb-3">
-          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 mt-0.5">←</button>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900">{incident.title}</h2>
-            {incident.description && <p className="text-gray-500 mt-1">{incident.description}</p>}
+    <PageShell size="narrow">
+      <button onClick={() => navigate(-1)} className="back-link">
+        <IconChevronLeft size={16} />
+        Retour aux incidents
+      </button>
+
+      <div className="detail-header">
+        <div className="min-w-0">
+          <h2 className="page-header">{incident.title}</h2>
+          {incident.description && <p className="page-subtext mt-2">{incident.description}</p>}
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {incident.severity_name && <Badge label={incident.severity_name} />}
+            {incident.state_name && <Badge label={incident.state_name} />}
+            <TeamBadge teamId={incident.team_id} teamName={incident.team_name} />
+            <span className="text-xs text-gray-400">{formatRelative(incident.created_at)}</span>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 ml-6">
-          {incident.severity_name && <Badge label={incident.severity_name} />}
-          {incident.state_name && <Badge label={incident.state_name} />}
-          <TeamBadge teamId={incident.team_id} teamName={incident.team_name} />
-          <span className="text-xs text-gray-400">{formatRelative(incident.created_at)}</span>
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2 mb-8">
+      <div className="flex flex-wrap gap-2 mb-6">
         {!isResolved && (
           <>
-            <button onClick={() => ackMutation.mutate()} disabled={ackMutation.isPending}
-              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {ackMutation.isPending ? '...' : '✓ Accuser réception'}
-            </button>
-            <button onClick={() => resolveMutation.mutate()} disabled={resolveMutation.isPending}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {resolveMutation.isPending ? '...' : '✓ Résoudre'}
-            </button>
-            <button onClick={() => setShowAssign(true)}
-              className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors">
-              👤 Assigner
-            </button>
+            <Button variant="warning" onClick={() => ackMutation.mutate()} disabled={ackMutation.isPending}>
+              {ackMutation.isPending ? '…' : 'Accuser réception'}
+            </Button>
+            <Button variant="success" onClick={() => resolveMutation.mutate()} disabled={resolveMutation.isPending}>
+              {resolveMutation.isPending ? '…' : 'Résoudre'}
+            </Button>
+            <Button variant="secondary" onClick={() => setShowAssign(true)}>Assigner</Button>
           </>
         )}
         {isResolved && activeTab === 'postmortem' && (
-          <button onClick={() => setShowPostmortem(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-            📝 {postmortem ? 'Modifier' : 'Rédiger'} le postmortem
-          </button>
+          <Button onClick={() => setShowPostmortem(true)}>
+            {postmortem ? 'Modifier' : 'Rédiger'} le postmortem
+          </Button>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === t.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Notes */}
       {activeTab === 'notes' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="card p-4 sm:p-5">
             <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="Ajouter une note..." />
-            <div className="flex items-center justify-between mt-3">
+              className="input-field resize-none"
+              placeholder="Ajouter une note…" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={noteInternal} onChange={e => setNoteInternal(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600" />
+                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
                 Note interne
               </label>
-              <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending || !noteContent.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-                {noteMutation.isPending ? 'Ajout...' : 'Ajouter'}
-              </button>
+              <Button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending || !noteContent.trim()}>
+                {noteMutation.isPending ? 'Ajout…' : 'Ajouter'}
+              </Button>
             </div>
           </div>
-          {noteError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{noteError}</p>}
-          {notesError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">Erreur lors du chargement des notes.</p>}
+          {noteError && <p className="form-error">{noteError}</p>}
+          {notesError && <p className="form-error">Erreur lors du chargement des notes.</p>}
           {(!notes || notes.length === 0) ? (
             <p className="text-center text-gray-400 py-8 text-sm">Aucune note pour l'instant.</p>
           ) : (
@@ -201,16 +187,15 @@ export default function IncidentDetailPage() {
       {/* Timeline */}
       {activeTab === 'timeline' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 flex gap-3">
+          <div className="card p-4 sm:p-5 flex flex-col sm:flex-row gap-3">
             <input value={timelineMsg} onChange={e => setTimelineMsg(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ajouter une entrée à la timeline..." />
-            <button onClick={() => timelineMutation.mutate()} disabled={timelineMutation.isPending || !timelineMsg.trim()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
-              {timelineMutation.isPending ? '...' : 'Ajouter'}
-            </button>
+              className="input-field flex-1"
+              placeholder="Ajouter une entrée à la timeline…" />
+            <Button onClick={() => timelineMutation.mutate()} disabled={timelineMutation.isPending || !timelineMsg.trim()} className="shrink-0">
+              {timelineMutation.isPending ? '…' : 'Ajouter'}
+            </Button>
           </div>
-          {timelineError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{timelineError}</p>}
+          {timelineError && <p className="form-error">{timelineError}</p>}
           {timelineEntries.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">Timeline vide.</p>
           ) : (
@@ -249,7 +234,7 @@ export default function IncidentDetailPage() {
               <p className="text-base font-medium text-gray-800 mb-1">Aucun postmortem rédigé</p>
               <p className="text-sm text-gray-500 mb-6">Documentez les causes racines et les actions correctives.</p>
               <button onClick={() => setShowPostmortem(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                className="btn-primary">
                 Rédiger le postmortem
               </button>
             </div>
@@ -294,7 +279,7 @@ export default function IncidentDetailPage() {
       <Modal open={showPostmortem} onClose={() => setShowPostmortem(false)} title="Postmortem" size="lg">
         <PostmortemForm incidentId={id!} existing={postmortem} onClose={() => setShowPostmortem(false)} />
       </Modal>
-    </div>
+    </PageShell>
   )
 }
 
@@ -317,20 +302,19 @@ function AssignForm({ incidentId, onClose }: { incidentId: string; onClose: () =
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Assigner à</label>
+        <label className="label">Assigner à</label>
         <select value={userId} onChange={e => setUserId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="input-field">
           <option value="">Sélectionner un utilisateur...</option>
           {data?.results?.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
         </select>
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-      <div className="flex justify-end gap-2 pt-2">
-        <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Annuler</button>
-        <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !userId}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-          {mutation.isPending ? 'Assignation...' : 'Assigner'}
-        </button>
+      <div className="form-actions">
+        <button onClick={onClose} className="btn-ghost">Annuler</button>
+        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !userId}>
+          {mutation.isPending ? 'Assignation…' : 'Assigner'}
+        </Button>
       </div>
     </div>
   )
@@ -369,9 +353,9 @@ function PostmortemForm({ incidentId, existing, onClose }: { incidentId: string;
     <div className="space-y-4">
       {fields.map(f => (
         <div key={f.key}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+          <label className="label">{f.label}</label>
           <textarea value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="input-field resize-none"
             placeholder={f.placeholder} />
         </div>
       ))}
@@ -381,12 +365,11 @@ function PostmortemForm({ incidentId, existing, onClose }: { incidentId: string;
         <span className="text-sm text-gray-700 font-medium">Publier le postmortem</span>
       </label>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-      <div className="flex justify-end gap-2 pt-2">
-        <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Annuler</button>
-        <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
-          {mutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
-        </button>
+      <div className="form-actions">
+        <button onClick={onClose} className="btn-ghost">Annuler</button>
+        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          {mutation.isPending ? 'Enregistrement…' : 'Enregistrer'}
+        </Button>
       </div>
     </div>
   )

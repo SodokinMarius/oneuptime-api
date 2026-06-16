@@ -31,13 +31,13 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email de l'utilisateur *</label>
+        <label className="label">Email de l'utilisateur *</label>
         <input
           type="email"
           required
           value={form.email}
           onChange={e => setForm({ ...form, email: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="collegue@exemple.com"
           autoComplete="off"
         />
@@ -47,9 +47,9 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
         </p>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Rôle *</label>
+        <label className="label">Rôle *</label>
         <select required value={form.role_id} onChange={e => setForm({ ...form, role_id: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="input-field">
           <option value="">Sélectionner un rôle...</option>
           {roles?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
@@ -63,7 +63,7 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
       <div className="flex justify-end">
         <button type="submit" disabled={mut.isPending || !form.email || !form.role_id}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          className="btn-primary disabled:opacity-50">
           {mut.isPending ? 'Ajout...' : 'Ajouter le membre'}
         </button>
       </div>
@@ -192,7 +192,7 @@ export default function TeamsTab() {
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">{teams?.length ?? 0} équipe(s)</p>
         <button onClick={() => setShowCreate(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          className="btn-primary">
           + Nouvelle équipe
         </button>
       </div>
@@ -208,20 +208,20 @@ export default function TeamsTab() {
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouvelle équipe" size="sm">
         <form onSubmit={e => { e.preventDefault(); setCreateError(''); createMut.mutate() }} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+            <label className="label">Nom *</label>
             <input required value={newTeam.name} onChange={e => setNewTeam({ ...newTeam, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
               placeholder="Équipe Backend, DevOps..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="label">Description</label>
             <input value={newTeam.description} onChange={e => setNewTeam({ ...newTeam, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="input-field" />
           </div>
           {createError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{createError}</div>}
           <div className="flex justify-end">
             <button type="submit" disabled={createMut.isPending}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              className="btn-primary disabled:opacity-50">
               {createMut.isPending ? 'Création...' : 'Créer'}
             </button>
           </div>

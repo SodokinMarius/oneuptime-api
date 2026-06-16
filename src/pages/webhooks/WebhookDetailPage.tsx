@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { webhooksApi } from '@/api/webhooks'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
+import { PageShell } from '@/components/ui/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Spinner } from '@/components/ui/Spinner'
+import { IconChevronLeft } from '@/components/ui/Icons'
 import { formatDate } from '@/utils/format'
 
 const statusColor: Record<string, string> = {
@@ -39,36 +43,33 @@ export default function WebhookDetailPage() {
     onSuccess: () => navigate('/webhooks'),
   })
 
-  if (isLoading) return (
-    <div className="flex justify-center py-20">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (isLoading) return <Spinner label="Chargement…" />
 
   if (!webhook) return null
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 mr-1">←</button>
-            <h2 className="text-2xl font-bold text-gray-900">{webhook.name}</h2>
+    <PageShell size="narrow">
+      <button onClick={() => navigate(-1)} className="back-link">
+        <IconChevronLeft size={16} />
+        Retour aux webhooks
+      </button>
+
+      <div className="detail-header">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h2 className="page-header">{webhook.name}</h2>
             <Badge label={webhook.is_active ? 'Actif' : 'Inactif'} />
             <TeamBadge teamId={webhook.team_id} teamName={webhook.team_name} />
           </div>
-          <p className="text-sm text-gray-500 font-mono">{webhook.url}</p>
+          <p className="text-sm text-gray-500 font-mono break-all">{webhook.url}</p>
         </div>
-        <button onClick={() => { if (confirm('Supprimer ce webhook ?')) deleteMutation.mutate() }}
-          className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors shrink-0">
+        <Button variant="danger" onClick={() => { if (confirm('Supprimer ce webhook ?')) deleteMutation.mutate() }}>
           Supprimer
-        </button>
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Infos */}
-        <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="lg:col-span-1 card p-4 sm:p-5 space-y-4">
           <h3 className="text-sm font-semibold text-gray-700">Informations</h3>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Créé le</p>
@@ -89,12 +90,10 @@ export default function WebhookDetailPage() {
         </div>
 
         {/* Deliveries */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Historique des envois (100 derniers)</h3>
+        <div className="lg:col-span-2 card p-4 sm:p-5">
+          <h3 className="section-title mb-4">Historique des envois (100 derniers)</h3>
           {loadingDeliveries ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+            <Spinner size="sm" />
           ) : !deliveries || deliveries.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">Aucun envoi pour l'instant.</p>
           ) : (
@@ -115,7 +114,7 @@ export default function WebhookDetailPage() {
                   {(d.status === 'failed' || d.status === 'exhausted') && (
                     <button onClick={() => retryMutation.mutate(d.id)}
                       disabled={retryMutation.isPending}
-                      className="text-xs text-blue-600 hover:underline shrink-0 disabled:opacity-50">
+                      className="btn-ghost btn-sm text-brand-600 shrink-0 disabled:opacity-50">
                       Réessayer
                     </button>
                   )}
@@ -125,6 +124,6 @@ export default function WebhookDetailPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

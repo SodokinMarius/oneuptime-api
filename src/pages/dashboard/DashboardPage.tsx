@@ -18,6 +18,7 @@ import {
   IconRefreshCw,
   IconTrendingUp,
 } from '@/components/ui/Icons'
+import { PageShell } from '@/components/ui/PageShell'
 
 export default function DashboardPage() {
   const user = authStore.getUser()
@@ -110,7 +111,7 @@ export default function DashboardPage() {
   const sc = statusConfig[overallStatus]
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <PageShell>
 
       {/* Header */}
       <div className="mb-7 flex items-start justify-between">
@@ -249,6 +250,6 @@ export default function DashboardPage() {
           Pages de statut
         </Link>
       </div>
-    </div>
+    </PageShell>
   )
 }

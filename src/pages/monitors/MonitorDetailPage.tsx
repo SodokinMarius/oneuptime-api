@@ -4,6 +4,10 @@ import { monitorsApi } from '@/api/monitors'
 import { StatusDot } from '@/components/ui/StatusDot'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
+import { PageShell } from '@/components/ui/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Spinner } from '@/components/ui/Spinner'
+import { IconChevronLeft } from '@/components/ui/Icons'
 import { formatDate, formatRelative, formatMs, formatUptime } from '@/utils/format'
 
 export default function MonitorDetailPage() {
@@ -39,63 +43,57 @@ export default function MonitorDetailPage() {
     onSuccess: () => navigate('/monitors'),
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
+  if (isLoading) return <Spinner label="Chargement…" />
   if (!monitor) return null
 
   return (
-    <div className="p-8 max-w-5xl">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/monitors')} className="text-gray-400 hover:text-gray-600 text-sm">← Retour</button>
-          <div className="flex items-center gap-3">
+    <PageShell size="narrow">
+      <button onClick={() => navigate('/monitors')} className="back-link">
+        <IconChevronLeft size={16} />
+        Retour aux monitors
+      </button>
+
+      <div className="detail-header">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
             <StatusDot status={monitor.status} />
-            <h2 className="text-2xl font-bold text-gray-900">{monitor.name}</h2>
+            <h2 className="page-header truncate">{monitor.name}</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             {monitor.is_paused && <Badge label="en pause" />}
             <Badge label={monitor.status} />
             <TeamBadge teamId={monitor.team_id} teamName={monitor.team_name} />
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => pauseMut.mutate()} disabled={pauseMut.isPending}
-            className="border border-gray-200 text-sm px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => pauseMut.mutate()} disabled={pauseMut.isPending}>
             {monitor.is_paused ? 'Reprendre' : 'Mettre en pause'}
-          </button>
-          <button onClick={() => { if (confirm('Supprimer ce monitor ?')) deleteMut.mutate() }}
-            className="border border-red-200 text-red-600 text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+          </Button>
+          <Button variant="danger" onClick={() => { if (confirm('Supprimer ce monitor ?')) deleteMut.mutate() }}>
             Supprimer
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Stats cards */}
       {uptime && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {[
             { label: 'Uptime (30j)', value: formatUptime(uptime.uptime_percent), color: 'text-emerald-600' },
             { label: 'Total checks', value: uptime.total_checks ?? 0, color: 'text-gray-900' },
             { label: 'Échecs', value: uptime.failed_checks ?? 0, color: 'text-red-500' },
             { label: 'Succès', value: uptime.successful_checks ?? 0, color: 'text-emerald-600' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div key={s.label} className="card p-4 sm:p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
-              <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+              <p className={`text-xl sm:text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Config */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Configuration</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="card p-4 sm:p-6">
+          <h3 className="section-title mb-4">Configuration</h3>
           <dl className="space-y-3 text-sm">
             {[
               ['Type', monitor.type],
@@ -108,27 +106,26 @@ export default function MonitorDetailPage() {
               ['Prochain check', formatRelative(monitor.next_check_at)],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-2">
-                <dt className="text-gray-500">{k}</dt>
-                <dd className="text-gray-900 text-right truncate max-w-[160px]">{v}</dd>
+                <dt className="text-gray-500 shrink-0">{k}</dt>
+                <dd className="text-gray-900 text-right truncate">{v}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        {/* Logs */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Derniers checks</h3>
+        <div className="lg:col-span-2 card p-4 sm:p-6">
+          <h3 className="section-title mb-4">Derniers checks</h3>
           {!logs?.results?.length ? (
             <p className="text-sm text-gray-400 text-center py-8">Aucun check pour le moment.</p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
               {logs.results.map(log => (
-                <div key={log.id} className="flex items-center justify-between py-2 border-b border-gray-50 text-sm">
-                  <div className="flex items-center gap-3">
+                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 border-b border-gray-50 text-sm">
+                  <div className="flex items-center gap-3 min-w-0">
                     <Badge label={log.status} />
-                    <span className="text-gray-600">{formatDate(log.checked_at)}</span>
+                    <span className="text-gray-600 truncate">{formatDate(log.checked_at)}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-gray-500">
+                  <div className="flex items-center gap-4 text-gray-500 shrink-0">
                     {log.response_status_code && (
                       <span className={log.response_status_code < 400 ? 'text-emerald-600' : 'text-red-500'}>
                         HTTP {log.response_status_code}
@@ -142,6 +139,6 @@ export default function MonitorDetailPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

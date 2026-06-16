@@ -132,48 +132,48 @@ function SSOConfigForm({
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+          <label className="label">Nom *</label>
           <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-field"
             placeholder="Okta Production" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider *</label>
+          <label className="label">Provider *</label>
           <select value={form.provider} onChange={e => applyPreset(e.target.value as SSOProvider)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="input-field">
             {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="label">Description</label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="input-field" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Entity ID IdP (Issuer) *</label>
+        <label className="label">Entity ID IdP (Issuer) *</label>
         <input required value={form.entity_id} onChange={e => setForm({ ...form, entity_id: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="https://idp.example.com/entity" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">SSO URL IdP *</label>
+        <label className="label">SSO URL IdP *</label>
         <input required value={form.sso_url} onChange={e => setForm({ ...form, sso_url: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="https://idp.example.com/sso/saml" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">SLO URL IdP (optionnel)</label>
+        <label className="label">SLO URL IdP (optionnel)</label>
         <input value={form.slo_url} onChange={e => setForm({ ...form, slo_url: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="label">
           Certificat X.509 IdP {initial ? '(laisser vide pour conserver)' : '*'}
         </label>
         <textarea
@@ -188,15 +188,15 @@ function SSOConfigForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rôle par défaut (JIT) *</label>
+          <label className="label">Rôle par défaut (JIT) *</label>
           <select required value={form.default_role_id} onChange={e => setForm({ ...form, default_role_id: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="input-field">
             <option value="">— Sélectionner —</option>
             {roles?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Équipes par défaut *</label>
+          <label className="label">Équipes par défaut *</label>
           <select
             multiple
             value={form.default_team_ids}

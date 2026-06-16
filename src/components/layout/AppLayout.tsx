@@ -207,7 +207,7 @@ export default function AppLayout() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
         {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 shrink-0 z-20 shadow-sm">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 shrink-0 z-20 shadow-sm safe-area-top">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
@@ -229,7 +229,7 @@ export default function AppLayout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto overscroll-contain">
           <Outlet />
         </main>
       </div>

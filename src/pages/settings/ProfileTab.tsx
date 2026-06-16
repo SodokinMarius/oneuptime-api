@@ -59,31 +59,31 @@ export default function ProfileTab() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+              <label className="label">Prénom</label>
               <input value={profile.first_name} onChange={e => setProfile(f => ({ ...f, first_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+              <label className="label">Nom</label>
               <input value={profile.last_name} onChange={e => setProfile(f => ({ ...f, last_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="input-field" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="label">Email</label>
             <input value={user?.email ?? ''} disabled
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Timeout de session (minutes)</label>
+            <label className="label">Timeout de session (minutes)</label>
             <input type="number" min={5} max={1440} value={profile.session_timeout_minutes}
               onChange={e => setProfile(f => ({ ...f, session_timeout_minutes: Number(e.target.value) }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="input-field" />
           </div>
           {profileError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{profileError}</p>}
           {profileSuccess && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">✓ Profil mis à jour</p>}
           <button onClick={() => { setProfileError(''); profileMutation.mutate() }} disabled={profileMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            className="btn-primary disabled:opacity-50">
             {profileMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
@@ -94,24 +94,24 @@ export default function ProfileTab() {
         <h3 className="text-base font-semibold text-gray-900 mb-5">Changer le mot de passe</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+            <label className="label">Mot de passe actuel</label>
             <input type="password" value={passwords.old_password}
               onChange={e => setPasswords(p => ({ ...p, old_password: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
               placeholder="••••••••" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+            <label className="label">Nouveau mot de passe</label>
             <input type="password" value={passwords.new_password}
               onChange={e => setPasswords(p => ({ ...p, new_password: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
               placeholder="••••••••" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le nouveau mot de passe</label>
+            <label className="label">Confirmer le nouveau mot de passe</label>
             <input type="password" value={passwords.confirm}
               onChange={e => setPasswords(p => ({ ...p, confirm: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
               placeholder="••••••••" />
           </div>
           {pwError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{pwError}</p>}

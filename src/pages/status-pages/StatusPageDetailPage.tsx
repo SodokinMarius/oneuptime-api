@@ -5,6 +5,10 @@ import { statusPagesApi, unwrapList } from '@/api/statusPages'
 import { monitorsApi } from '@/api/monitors'
 import { Modal } from '@/components/ui/Modal'
 import { TeamBadge } from '@/components/ui/TeamBadge'
+import { PageShell } from '@/components/ui/PageShell'
+import { Spinner } from '@/components/ui/Spinner'
+import { Tabs } from '@/components/ui/Tabs'
+import { IconChevronLeft } from '@/components/ui/Icons'
 import { formatDate } from '@/utils/format'
 
 type Tab = 'resources' | 'announcements' | 'subscribers' | 'branding'
@@ -67,21 +71,20 @@ export default function StatusPageDetailPage() {
     { id: 'branding', label: 'Branding' },
   ]
 
-  if (isLoading) return (
-    <div className="flex justify-center py-20">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (isLoading) return <Spinner label="Chargement…" />
   if (!page) return null
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 mr-1">←</button>
-            <h2 className="text-2xl font-bold text-gray-900">{page.name}</h2>
+    <PageShell size="narrow">
+      <button onClick={() => navigate(-1)} className="back-link">
+        <IconChevronLeft size={16} />
+        Retour aux status pages
+      </button>
+
+      <div className="detail-header">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h2 className="page-header">{page.name}</h2>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${page.is_public ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
               {page.is_public ? 'Public' : 'Privé'}
             </span>
@@ -89,24 +92,15 @@ export default function StatusPageDetailPage() {
           </div>
           <p className="text-sm text-gray-500">
             Slug : <span className="font-mono">{page.slug}</span>
-            {page.custom_domain && <span className="ml-3">Domaine : <span className="font-mono">{page.custom_domain}</span></span>}
+            {page.custom_domain && <span className="ml-0 sm:ml-3 block sm:inline mt-1 sm:mt-0">Domaine : <span className="font-mono">{page.custom_domain}</span></span>}
           </p>
         </div>
-        <a href={`/status/${page.slug}`} target="_blank" rel="noopener noreferrer"
-          className="text-sm text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shrink-0">
+        <a href={`/status/${page.slug}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm shrink-0">
           Voir la page ↗
         </a>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === t.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Resources tab */}
       {activeTab === 'resources' && (
@@ -241,7 +235,7 @@ export default function StatusPageDetailPage() {
       <Modal open={showAddAnnouncement} onClose={() => setShowAddAnnouncement(false)} title="Nouvelle annonce">
         <AddAnnouncementForm pageId={id!} onClose={() => setShowAddAnnouncement(false)} />
       </Modal>
-    </div>
+    </PageShell>
   )
 }
 
@@ -260,26 +254,26 @@ function AddResourceForm({ pageId, monitors, onClose }: { pageId: string; monito
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Monitor</label>
+        <label className="label">Monitor</label>
         <select value={monitorId} onChange={e => setMonitorId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="input-field">
           <option value="">Sélectionner...</option>
           {monitors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="label">
           Nom d'affichage <span className="text-gray-400 font-normal">(optionnel)</span>
         </label>
         <input value={displayName} onChange={e => setDisplayName(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="Utilise le nom du monitor par défaut" />
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Annuler</button>
         <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !monitorId}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+          className="px-4 py-2 btn-primary disabled:opacity-50">
           {mutation.isPending ? 'Ajout...' : 'Ajouter'}
         </button>
       </div>
@@ -301,15 +295,15 @@ function AddAnnouncementForm({ pageId, onClose }: { pageId: string; onClose: () 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
+        <label className="label">Titre</label>
         <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="Maintenance planifiée..." />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+        <label className="label">Message</label>
         <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="input-field resize-none"
           placeholder="Détails de l'annonce..." />
       </div>
       <label className="flex items-center gap-2 cursor-pointer">
@@ -321,7 +315,7 @@ function AddAnnouncementForm({ pageId, onClose }: { pageId: string; onClose: () 
       <div className="flex justify-end gap-2 pt-2">
         <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Annuler</button>
         <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.title || !form.message}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+          className="px-4 py-2 btn-primary disabled:opacity-50">
           {mutation.isPending ? 'Publication...' : 'Publier'}
         </button>
       </div>
@@ -360,7 +354,7 @@ function BrandingForm({ pageId, page }: { pageId: string; page: any }) {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h4 className="text-sm font-semibold text-gray-900">Apparence</h4>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Couleur principale</label>
+          <label className="label">Couleur principale</label>
           <div className="flex items-center gap-3">
             <input type="color" value={form.primary_color} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
               className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0.5" />
@@ -369,13 +363,13 @@ function BrandingForm({ pageId, page }: { pageId: string; page: any }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">URL du logo</label>
+          <label className="label">URL du logo</label>
           <input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-field"
             placeholder="https://exemple.com/logo.png" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">CSS personnalisé</label>
+          <label className="label">CSS personnalisé</label>
           <textarea value={form.custom_css} onChange={e => setForm(f => ({ ...f, custom_css: e.target.value }))} rows={6}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             placeholder="/* CSS personnalisé */" />
@@ -383,7 +377,7 @@ function BrandingForm({ pageId, page }: { pageId: string; page: any }) {
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
         {success && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">✓ Branding mis à jour</p>}
         <button onClick={() => brandingMutation.mutate()} disabled={brandingMutation.isPending}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          className="btn-primary disabled:opacity-50">
           {brandingMutation.isPending ? 'Enregistrement...' : 'Enregistrer le branding'}
         </button>
       </div>
@@ -391,9 +385,9 @@ function BrandingForm({ pageId, page }: { pageId: string; page: any }) {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h4 className="text-sm font-semibold text-gray-900">Domaine personnalisé</h4>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Domaine</label>
+          <label className="label">Domaine</label>
           <input value={domainForm.custom_domain} onChange={e => setDomainForm({ custom_domain: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-field"
             placeholder="status.mondomaine.com" />
         </div>
         <button onClick={() => domainMutation.mutate()} disabled={domainMutation.isPending}

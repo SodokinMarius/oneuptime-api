@@ -38,7 +38,7 @@ export function TeamSelect({ value, onChange, allowShared = false, className = '
   if (teams.length === 1 && !allowShared) {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Équipe</label>
+        <label className="label">Équipe</label>
         <p className="text-sm text-gray-600 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
           {teams[0].name}
         </p>
@@ -48,7 +48,7 @@ export function TeamSelect({ value, onChange, allowShared = false, className = '
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">Équipe</label>
+      <label className="label">Équipe</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}

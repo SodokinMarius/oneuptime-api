@@ -26,13 +26,13 @@ function ApiKeyForm({ onSuccess }: { onSuccess: (key: string) => void }) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+        <label className="label">Nom *</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-field"
           placeholder="CI/CD Pipeline, Terraform..." />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Permissions</label>
+        <label className="label">Permissions</label>
         <div className="flex gap-2">
           {['*', 'monitor:read', 'monitor:create', 'incident:read'].map(p => (
             <button key={p} type="button" onClick={() => setForm(f => ({
@@ -46,9 +46,9 @@ function ApiKeyForm({ onSuccess }: { onSuccess: (key: string) => void }) {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Expiration (optionnel)</label>
+        <label className="label">Expiration (optionnel)</label>
         <input type="datetime-local" value={form.expires_at} onChange={e => setForm({ ...form, expires_at: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="input-field" />
       </div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
       <div className="flex justify-end">
@@ -83,7 +83,7 @@ export default function ApiKeysTab() {
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">{(keys as ApiKey[])?.length ?? 0} clé(s) active(s)</p>
         <button onClick={() => setShowCreate(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          className="btn-primary">
           + Générer une clé
         </button>
       </div>

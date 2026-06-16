@@ -43,16 +43,16 @@ export default function MonitorForm({ onSuccess }: Props) {
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+          <label className="label">Nom *</label>
           <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-field"
             placeholder="Mon API de prod" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+          <label className="label">Type *</label>
           <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as MonitorType })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="input-field">
             <option value="website">🌐 Website</option>
             <option value="api">🔌 API</option>
             <option value="tcp">🔗 TCP</option>
@@ -62,9 +62,9 @@ export default function MonitorForm({ onSuccess }: Props) {
 
         {form.type !== 'heartbeat' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Méthode HTTP</label>
+            <label className="label">Méthode HTTP</label>
             <select value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="input-field">
               {['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(m => (
                 <option key={m}>{m}</option>
               ))}
@@ -74,34 +74,34 @@ export default function MonitorForm({ onSuccess }: Props) {
 
         {needsUrl && (
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="label">
               {form.type === 'tcp' ? 'Cible (host:port) *' : 'URL *'}
             </label>
             <input required={needsUrl} value={form.url} onChange={e => setForm({ ...form, url: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-field"
               placeholder={form.type === 'tcp' ? 'example.com:443' : 'https://example.com'} />
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Intervalle (secondes)</label>
+          <label className="label">Intervalle (secondes)</label>
           <input type="number" min={30} max={3600} value={form.interval_seconds}
             onChange={e => setForm({ ...form, interval_seconds: +e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="input-field" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (secondes)</label>
+          <label className="label">Timeout (secondes)</label>
           <input type="number" min={5} max={120} value={form.timeout_seconds}
             onChange={e => setForm({ ...form, timeout_seconds: +e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="input-field" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tentatives</label>
+          <label className="label">Tentatives</label>
           <input type="number" min={1} max={10} value={form.retries}
             onChange={e => setForm({ ...form, retries: +e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="input-field" />
         </div>
 
         <div className="flex items-center gap-2 pt-6">
