@@ -42,20 +42,41 @@ class IncidentSeveritySerializer(serializers.ModelSerializer):
 
 
 class IncidentNoteSerializer(serializers.ModelSerializer):
-    author_email = serializers.EmailField(source="author.email", read_only=True)
+    author_email = serializers.SerializerMethodField()
 
     class Meta:
         model = IncidentNote
         fields = ("id", "content", "is_public", "author_email", "created_at", "updated_at")
         read_only_fields = ("id", "author_email", "created_at", "updated_at")
 
+    def get_author_email(self, obj) -> str | None:
+        if obj.author_id and obj.author:
+            return obj.author.email
+        return None
+
 
 class IncidentPostmortemSerializer(serializers.ModelSerializer):
+    published = serializers.SerializerMethodField()
+
     class Meta:
         model = IncidentPostmortem
-        fields = ("id", "summary", "impact", "root_cause", "timeline",
-                  "action_items", "published_at", "created_at", "updated_at")
-        read_only_fields = ("id", "created_at", "updated_at")
+        fields = (
+            "id", "summary", "impact", "root_cause", "timeline",
+            "action_items", "published_at", "published",
+            "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "published", "created_at", "updated_at")
+
+    def get_published(self, obj) -> bool:
+        return obj.published_at is not None
+
+    def validate_action_items(self, value):
+        if isinstance(value, str):
+            lines = [line.strip() for line in value.splitlines() if line.strip()]
+            return lines or []
+        if value is None:
+            return []
+        return value
 
 
 class IncidentSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):

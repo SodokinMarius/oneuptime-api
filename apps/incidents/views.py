@@ -23,7 +23,7 @@ from apps.incidents.serializers import (
     IncidentStateSerializer,
 )
 from apps.incidents import services
-from apps.rbac.permissions import PermissionMixin
+from apps.rbac.permissions import IsAuthenticated, PermissionMixin, RequirePermission
 from core.team_scoping import TeamScopedViewMixin
 
 User = get_user_model()
@@ -111,11 +111,15 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
         "resolve":         "incident:resolve",
         "assign":          "incident:assign",
         "notes":           "incident:read",
-        "add_note":        "incident:update",
         "timeline":        "incident:read",
         "get_postmortem":  "incident:read",
         "upsert_postmortem": "incident:postmortem",
     }
+
+    def get_permissions(self):
+        if self.action in ("notes", "timeline") and self.request.method == "POST":
+            return [IsAuthenticated(), RequirePermission("incident:update")]
+        return super().get_permissions()
 
     def get_queryset(self):
         project = getattr(self.request, "project", None)
@@ -203,41 +207,57 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
     # ------------------------------------------------------------------
 
     @extend_schema(tags=["Incidents"], summary="List incident notes")
-    @action(detail=True, methods=["get"])
+    @extend_schema(tags=["Incidents"], summary="Add a note to an incident", request=AddNoteSerializer, methods=["POST"])
+    @action(detail=True, methods=["get", "post"], url_path="notes")
     def notes(self, request, pk=None):
         incident = self.get_object()
-        notes = incident.notes.select_related("author").order_by("created_at")
-        return Response(IncidentNoteSerializer(notes, many=True).data)
-
-    @extend_schema(
-        tags=["Incidents"],
-        summary="Add a note to an incident",
-        request=AddNoteSerializer,
-    )
-    @action(detail=True, methods=["post"], url_path="notes")
-    def add_note(self, request, pk=None):
-        incident = self.get_object()
-        serializer = AddNoteSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        note = services.add_note(
-            incident=incident,
-            author=request.user,
-            content=serializer.validated_data["content"],
-            is_public=serializer.validated_data.get("is_public", False),
-        )
-        return Response(
-            IncidentNoteSerializer(note).data,
-            status=status.HTTP_201_CREATED,
-        )
+        if request.method == "POST":
+            serializer = AddNoteSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            note = services.add_note(
+                incident=incident,
+                author=request.user,
+                content=serializer.validated_data["content"],
+                is_public=serializer.validated_data.get("is_public", False),
+            )
+            return Response(
+                IncidentNoteSerializer(note).data,
+                status=status.HTTP_201_CREATED,
+            )
+        qs = incident.notes.select_related("author").order_by("created_at")
+        return Response(IncidentNoteSerializer(qs, many=True).data)
 
     # ------------------------------------------------------------------
     # Timeline
     # ------------------------------------------------------------------
 
     @extend_schema(tags=["Incidents"], summary="Get incident timeline")
-    @action(detail=True, methods=["get"])
+    @extend_schema(
+        tags=["Incidents"],
+        summary="Add a custom timeline entry (stored as an internal note)",
+        request={"application/json": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string"}}}},
+        methods=["POST"],
+    )
+    @action(detail=True, methods=["get", "post"], url_path="timeline")
     def timeline(self, request, pk=None):
         incident = self.get_object()
+        if request.method == "POST":
+            message = (request.data.get("message") or "").strip()
+            if not message:
+                return Response(
+                    {"detail": "message is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            services.add_note(
+                incident=incident,
+                author=request.user,
+                content=message,
+                is_public=False,
+            )
+            return Response(
+                {"timeline": services.build_timeline(incident)},
+                status=status.HTTP_201_CREATED,
+            )
         return Response({"timeline": services.build_timeline(incident)})
 
     # ------------------------------------------------------------------
@@ -273,8 +293,8 @@ class IncidentViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSe
 
         serializer.is_valid(raise_exception=True)
 
-        # Publish if requested
-        publish = request.data.get("publish", False)
+        # Publish if requested (accept both publish and published from clients)
+        publish = request.data.get("publish", False) or request.data.get("published", False)
         extra = {}
         if publish:
             extra["published_at"] = timezone.now()
