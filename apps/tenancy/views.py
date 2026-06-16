@@ -81,7 +81,29 @@ class ProjectViewSet(PermissionMixin, viewsets.ModelViewSet):
         return qs.order_by("name")
 
     def perform_create(self, serializer):
-        serializer.save(tenant=self.request.tenant)
+        from apps.rbac.models import Team, TeamMembership
+        from apps.rbac.services import bootstrap_project
+
+        project = serializer.save(tenant=self.request.tenant)
+        bootstrapped = bootstrap_project(project, self.request.tenant)
+
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated:
+            admin_role = bootstrapped["roles"].get("admin")
+            if admin_role:
+                admin_team, _ = Team.objects.get_or_create(
+                    project=project,
+                    name="Administrators",
+                    defaults={
+                        "tenant": self.request.tenant,
+                        "description": "Project owners and administrators",
+                    },
+                )
+                TeamMembership.objects.get_or_create(
+                    team=admin_team,
+                    user=user,
+                    defaults={"role": admin_role, "granted_by": user},
+                )
 
     def destroy(self, request, *args, **kwargs):
         project = self.get_object()
