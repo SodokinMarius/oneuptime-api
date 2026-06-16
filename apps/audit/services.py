@@ -83,6 +83,9 @@ class AuditService:
             request = cls.get_current_request()
 
         actor_id, actor_type = cls._resolve_actor(actor)
+        if actor_id is None:
+            # actor_id is NOT NULL — use tenant id as stable placeholder for system actions
+            actor_id = tenant.id
 
         with transaction.atomic():
             prev = (
@@ -138,57 +141,16 @@ class AuditService:
         new=None,
         project=None,
     ):
-        """Shortcut for signal-based recording — uses thread-local actor."""
-        actor = cls.get_current_actor()
-        if actor is None:
-            actor_id = None
-            from apps.audit.models import ActorType
-            actor_type = ActorType.SYSTEM
-        else:
-            actor_id, actor_type = cls._resolve_actor(actor)
-
-        from apps.audit.models import AuditLog
-        with transaction.atomic():
-            prev = (
-                AuditLog.objects.filter(tenant=tenant)
-                .order_by("-id")
-                .select_for_update()
-                .first()
-            )
-            prev_hash = prev.record_hash if prev else "0" * 64
-
-            payload = {
-                "tenant": str(tenant.id),
-                "actor_id": str(actor_id) if actor_id else None,
-                "actor_type": actor_type,
-                "action": action,
-                "resource_type": resource_type,
-                "resource_id": str(resource_id) if resource_id else None,
-                "old": old,
-                "new": new,
-                "prev_hash": prev_hash,
-            }
-            record_hash = hashlib.sha256(
-                json.dumps(payload, sort_keys=True, default=str).encode()
-            ).hexdigest()
-
-            log = AuditLog(
-                tenant=tenant,
-                project=project,
-                actor_id=actor_id or tenant.id,
-                actor_type=actor_type,
-                action=action,
-                resource_type=resource_type,
-                resource_id=resource_id,
-                old_value=old,
-                new_value=new,
-                ip_address=cls._get_ip(cls.get_current_request()),
-                user_agent=cls._get_ua(cls.get_current_request()),
-                prev_hash=prev_hash,
-                record_hash=record_hash,
-            )
-            super(AuditLog, log).save()
-            return log
+        """Shortcut for signal-based recording — uses thread-local actor/request."""
+        return cls.record(
+            tenant=tenant,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            old=old,
+            new=new,
+            project=project,
+        )
 
     # ------------------------------------------------------------------
     # Chain verification
@@ -231,8 +193,7 @@ class AuditService:
     def _resolve_actor(actor):
         from apps.audit.models import ActorType
 
-        if actor is None:
-            from django.conf import settings
+        if actor is None or getattr(actor, "is_authenticated", True) is False:
             return None, ActorType.SYSTEM
 
         # ApiKey instance

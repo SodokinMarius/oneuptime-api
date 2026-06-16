@@ -34,6 +34,15 @@ class ActiveVerifiedJWTAuthentication(JWTAuthentication):
         return user
 
 
+def _set_audit_actor(request, actor) -> None:
+    """Inject authenticated user/api_key + request for audit signals (runs after JWT auth)."""
+    try:
+        from apps.audit.services import AuditService
+        AuditService.set_current_actor(actor, request)
+    except Exception:
+        pass
+
+
 class UnifiedTokenAuthentication(BaseAuthentication):
     """
     Single authentication class that handles both:
@@ -78,6 +87,7 @@ class UnifiedTokenAuthentication(BaseAuthentication):
             user = self._jwt_auth.get_user(validated)
             request.auth_method = validated.get("auth_method", "password")
             request.sso_projects = validated.get("sso_projects", []) or []
+            _set_audit_actor(request, user)
             return (user, validated)
         except (InvalidToken, TokenError, JWTAuthFailed) as exc:
             raise AuthenticationFailed(str(exc)) from exc
@@ -123,4 +133,5 @@ class UnifiedTokenAuthentication(BaseAuthentication):
 
         # Attach api_key to request so views can inspect permissions
         request.api_key = api_key
+        _set_audit_actor(request, api_key)
         return (user, api_key)

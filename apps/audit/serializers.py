@@ -30,9 +30,11 @@ class AuditLogSerializer(serializers.ModelSerializer):
         if obj.actor_type == ActorType.API_KEY:
             from apps.rbac.models import ApiKey
             name = ApiKey.objects.filter(id=obj.actor_id).values_list("name", flat=True).first()
-            return name or str(obj.actor_id)
+            return name or f"API key {str(obj.actor_id)[:8]}"
         if obj.actor_type == ActorType.SYSTEM:
-            return "system"
+            return "Automatique (scheduler)"
+        if obj.actor_type == ActorType.SCIM:
+            return "SCIM"
         return str(obj.actor_id)
 
 
