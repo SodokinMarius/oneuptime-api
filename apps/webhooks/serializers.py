@@ -11,7 +11,7 @@ class WebhookSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Webhook
         fields = (
-            "id", "name", "url", "secret", "event_types",
+            "id", "name", "url", "secret", "payload_format", "event_types",
             "is_active", "headers", "timeout_seconds", "max_retries",
             "team_id", "team_name",
             "created_at", "updated_at",

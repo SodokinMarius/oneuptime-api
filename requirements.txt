@@ -24,7 +24,8 @@ rich==13.7.1
 
 # Production
 gunicorn==22.0.0
-django-redis==5.4.0
+# django-redis==5.4.0
+django_redis==7.0.0
 
 # Dev / tests
 pytest==8.2.2

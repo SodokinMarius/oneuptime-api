@@ -13,6 +13,11 @@ class MonitorType(models.TextChoices):
     WEBSITE = "website", "Website"
     PING = "ping", "Ping (ICMP)"
     TCP = "tcp", "TCP Port"
+    UDP = "udp", "UDP Port"
+    DNS = "dns", "DNS"
+    SSL = "ssl", "SSL Certificate"
+    MULTI_STEP_API = "multi_step_api", "Multi-step API"
+    JOURNEY = "journey", "User Journey"
     HEARTBEAT = "heartbeat", "Heartbeat"
 
 
@@ -100,6 +105,11 @@ class Monitor(models.Model):
     retries = models.PositiveSmallIntegerField(default=3)
     probe_locations = models.JSONField(default=list)
     criteria = models.JSONField(default=dict)
+    steps = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Ordered HTTP steps for multi_step_api and journey monitors.",
+    )
     headers = models.JSONField(default=dict)
     body = models.TextField(blank=True)
 

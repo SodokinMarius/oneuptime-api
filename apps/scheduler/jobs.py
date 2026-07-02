@@ -34,6 +34,10 @@ def job_process_maintenance():
     _run_command("process_maintenance")
 
 
+def job_process_incident_escalations():
+    _run_command("process_incident_escalations")
+
+
 def job_process_webhooks():
     _run_command("process_webhook_deliveries")
 
@@ -67,6 +71,16 @@ def start_scheduler():
         misfire_grace_time=30,
     )
     scheduler.add_job(
+        job_process_incident_escalations,
+        trigger=CronTrigger(minute="*"),
+        id="process_incident_escalations",
+        name="Process incident escalations and workflows",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=30,
+    )
+    scheduler.add_job(
         job_process_webhooks,
         trigger=CronTrigger(minute="*"),
         id="process_webhook_deliveries",
@@ -89,7 +103,8 @@ def start_scheduler():
 
     logger.info(
         "APScheduler started — run_checks, process_maintenance, "
-        "process_webhook_deliveries: every minute; purge_expired: 03:00 %s",
+        "process_incident_escalations, process_webhook_deliveries: every minute; "
+        "purge_expired: 03:00 %s",
         settings.TIME_ZONE,
     )
     try:

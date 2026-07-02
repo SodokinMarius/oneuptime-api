@@ -57,9 +57,36 @@ class MaintenanceNotificationService:
         )
 
     @classmethod
+    def _subscriber_phones(cls, maintenance):
+        pages = status_pages_for_maintenance(maintenance)
+        if not pages.exists():
+            return []
+        return list(
+            StatusPageSubscriber.objects.filter(
+                status_page__in=pages,
+                phone_verified=True,
+            )
+            .exclude(phone="")
+            .values_list("phone", flat=True)
+            .distinct()
+        )
+
+    @classmethod
+    def _notify_sms(cls, maintenance, message: str) -> None:
+        from core.notifications.sms import SMSService
+
+        for phone in cls._subscriber_phones(maintenance):
+            SMSService.send(phone, message)
+
+    @classmethod
+    def _brand_name(cls) -> str:
+        return getattr(settings, "EMAIL_FROM_NAME", "OneUptime")
+
+    @classmethod
     def notify_started(cls, maintenance) -> None:
         pages = list(status_pages_for_maintenance(maintenance))
         status_page_url = cls._status_page_url(pages[0].slug) if pages else settings.FRONTEND_URL
+        brand = cls._brand_name()
         for email in cls._subscriber_emails(maintenance):
             context = {
                 **cls._base_context(email),
@@ -69,7 +96,6 @@ class MaintenanceNotificationService:
                 "ends_at": maintenance.ends_at,
                 "status_page_url": status_page_url,
             }
-            brand = context["brand_name"]
             plain = (
                 f"Maintenance planifiée — {maintenance.title}\n\n"
                 f"Début : {maintenance.starts_at}\n"
@@ -84,11 +110,17 @@ class MaintenanceNotificationService:
                 context=context,
                 plain=plain,
             )
+        sms_body = (
+            f"[{brand}] Maintenance en cours: {maintenance.title}. "
+            f"Fin prévue: {maintenance.ends_at}"
+        )
+        cls._notify_sms(maintenance, sms_body)
 
     @classmethod
     def notify_ended(cls, maintenance) -> None:
         pages = list(status_pages_for_maintenance(maintenance))
         status_page_url = cls._status_page_url(pages[0].slug) if pages else settings.FRONTEND_URL
+        brand = cls._brand_name()
         for email in cls._subscriber_emails(maintenance):
             context = {
                 **cls._base_context(email),
@@ -96,7 +128,6 @@ class MaintenanceNotificationService:
                 "ends_at": maintenance.ends_at,
                 "status_page_url": status_page_url,
             }
-            brand = context["brand_name"]
             plain = (
                 f"Maintenance terminée — {maintenance.title}\n\n"
                 f"Fin : {maintenance.ends_at}\n\n"
@@ -109,3 +140,7 @@ class MaintenanceNotificationService:
                 context=context,
                 plain=plain,
             )
+        cls._notify_sms(
+            maintenance,
+            f"[{brand}] Maintenance terminée: {maintenance.title}",
+        )

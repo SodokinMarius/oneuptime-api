@@ -14,10 +14,12 @@ class ScheduledMaintenanceSerializer(TeamScopeSerializerMixin, serializers.Model
             "monitors", "status",
             "is_visible_on_status_page",
             "notify_subscribers",
+            "recurrence_frequency", "recurrence_interval",
+            "recurrence_weekdays", "recurrence_until", "series_id",
             "team_id", "team_name",
             "created_at", "updated_at",
         )
-        read_only_fields = ("id", "status", "created_at", "updated_at")
+        read_only_fields = ("id", "status", "series_id", "created_at", "updated_at")
 
     def validate(self, attrs):
         starts = attrs.get("starts_at", getattr(self.instance, "starts_at", None))
@@ -25,5 +27,15 @@ class ScheduledMaintenanceSerializer(TeamScopeSerializerMixin, serializers.Model
         if starts and ends and ends <= starts:
             raise serializers.ValidationError(
                 {"ends_at": "ends_at must be after starts_at."}
+            )
+
+        freq = attrs.get(
+            "recurrence_frequency",
+            getattr(self.instance, "recurrence_frequency", "none"),
+        )
+        until = attrs.get("recurrence_until", getattr(self.instance, "recurrence_until", None))
+        if freq and freq != "none" and until and starts and until <= starts:
+            raise serializers.ValidationError(
+                {"recurrence_until": "recurrence_until must be after starts_at."}
             )
         return attrs

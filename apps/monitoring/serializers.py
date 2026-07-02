@@ -29,7 +29,7 @@ class MonitorSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
         fields = (
             "id", "name", "type", "url", "method",
             "interval_seconds", "timeout_seconds", "retries",
-            "probe_locations", "criteria", "headers", "body",
+            "probe_locations", "criteria", "steps", "headers", "body",
             "alert_on_failure", "is_paused", "status", "tags",
             "team_id", "team_name",
             "current_incident", "last_check_at", "next_check_at",
@@ -60,6 +60,8 @@ class MonitorSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     def validate(self, attrs):
         mtype = attrs.get("type", getattr(self.instance, "type", None))
         url = attrs.get("url", getattr(self.instance, "url", ""))
+        steps = attrs.get("steps", getattr(self.instance, "steps", None) or [])
+
         if mtype in ("api", "website") and not url:
             raise serializers.ValidationError(
                 {"url": "URL is required for api/website monitor types."}
@@ -68,6 +70,28 @@ class MonitorSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"url": "TCP target (host:port) is required for tcp monitor type."}
             )
+        if mtype == "udp" and not url:
+            raise serializers.ValidationError(
+                {"url": "UDP target (host:port) is required for udp monitor type."}
+            )
+        if mtype == "dns" and not url:
+            raise serializers.ValidationError(
+                {"url": "Hostname is required for dns monitor type."}
+            )
+        if mtype == "ssl" and not url:
+            raise serializers.ValidationError(
+                {"url": "Hostname or https URL is required for ssl monitor type."}
+            )
+        if mtype == "ping" and not url:
+            raise serializers.ValidationError(
+                {"url": "Hostname is required for ping monitor type."}
+            )
+        if mtype in ("multi_step_api", "journey") and not steps:
+            raise serializers.ValidationError(
+                {"steps": "At least one step is required for this monitor type."}
+            )
+        if steps and not isinstance(steps, list):
+            raise serializers.ValidationError({"steps": "Steps must be a list."})
         return attrs
 
 

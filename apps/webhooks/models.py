@@ -20,6 +20,12 @@ class Webhook(models.Model):
     An outbound webhook endpoint subscribed to one or more event types.
     Payloads are signed with HMAC-SHA256 using the stored secret.
     """
+
+    class PayloadFormat(models.TextChoices):
+        JSON = "json", "JSON (default)"
+        SLACK = "slack", "Slack Incoming Webhook"
+        TEAMS = "teams", "Microsoft Teams Connector"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(
         "tenancy.Tenant", on_delete=models.CASCADE, related_name="webhooks"
@@ -38,6 +44,11 @@ class Webhook(models.Model):
     name = models.CharField(max_length=200)
     url = models.URLField(max_length=2048)
     secret = models.CharField(max_length=64)
+    payload_format = models.CharField(
+        max_length=20,
+        choices=PayloadFormat.choices,
+        default=PayloadFormat.JSON,
+    )
     event_types = models.JSONField(default=list)
     is_active = models.BooleanField(default=True)
     headers = models.JSONField(default=dict)

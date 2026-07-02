@@ -107,8 +107,11 @@ class StatusPageSubscriber(models.Model):
         StatusPage, on_delete=models.CASCADE, related_name="subscribers"
     )
     email = models.EmailField()
+    phone = models.CharField(max_length=32, blank=True)
     is_verified = models.BooleanField(default=False)
+    phone_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=64, blank=True)
+    phone_verification_token = models.CharField(max_length=64, blank=True)
     subscribed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

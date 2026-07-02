@@ -294,6 +294,11 @@ SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
 # OTP / MFA / Activation
 # ---------------------------------------------------------------------------
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+# Optional SMS (Twilio) for maintenance / escalation alerts
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_FROM_NUMBER = config('TWILIO_FROM_NUMBER', default='')
 API_BASE_URL = config('API_BASE_URL', default='http://localhost:8000')
 
 # SAML Service Provider key pair (PEM). Generate with:

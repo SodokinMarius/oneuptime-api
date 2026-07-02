@@ -36,13 +36,22 @@ class ScheduledMaintenanceViewSet(TeamScopedViewMixin, PermissionMixin, viewsets
         return self.scope_queryset_by_team(qs).order_by("-starts_at")
 
     def perform_create(self, serializer):
+        import uuid
+
+        from apps.maintenance.models import RecurrenceFrequency
         from apps.maintenance.services import emit_maintenance_webhook
 
         project = self.request.project
+        extra = {}
+        freq = serializer.validated_data.get("recurrence_frequency", RecurrenceFrequency.NONE)
+        if freq and freq != RecurrenceFrequency.NONE:
+            extra["series_id"] = uuid.uuid4()
+
         maintenance = serializer.save(
             tenant=project.tenant,
             project=project,
             **self.team_save_kwargs(serializer),
+            **extra,
         )
         emit_maintenance_webhook("scheduled_maintenance.created", maintenance)
 

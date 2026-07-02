@@ -57,6 +57,7 @@ class WebhookService:
                         event_id=event_id,
                         data=payload,
                         now=now,
+                        hook=hook,
                     )
                     WebhookDelivery.objects.create(
                         tenant=tenant,
@@ -85,14 +86,55 @@ class WebhookService:
         return base.filter(event_types__contains="*")
 
     @classmethod
-    def _build_payload(cls, tenant, project, event_type: str, event_id: str, data: dict, now) -> dict:
-        return {
+    def _build_payload(cls, tenant, project, event_type: str, event_id: str, data: dict, now, hook=None) -> dict:
+        base = {
             "id": event_id,
             "type": event_type,
             "timestamp": now.isoformat(),
             "projectId": str(project.id),
             "tenantId": str(tenant.id),
             "data": data,
+        }
+        if hook is None:
+            return base
+
+        fmt = getattr(hook, "payload_format", "json") or "json"
+        if fmt == "slack":
+            return cls._format_slack_payload(event_type, data)
+        if fmt == "teams":
+            return cls._format_teams_payload(event_type, data)
+        return base
+
+    @staticmethod
+    def _format_slack_payload(event_type: str, data: dict) -> dict:
+        incident = (data or {}).get("incident") or {}
+        title = incident.get("title") or event_type
+        severity = incident.get("severity_name") or incident.get("severity") or "n/a"
+        text = f"*{event_type}*\n*{title}*\nSeverity: {severity}"
+        if incident.get("description"):
+            text += f"\n{incident['description']}"
+        return {"text": text}
+
+    @staticmethod
+    def _format_teams_payload(event_type: str, data: dict) -> dict:
+        incident = (data or {}).get("incident") or {}
+        title = incident.get("title") or event_type
+        severity = incident.get("severity_name") or incident.get("severity") or "n/a"
+        return {
+            "@type": "MessageCard",
+            "@context": "https://schema.org/extensions",
+            "summary": event_type,
+            "themeColor": "E81123",
+            "title": event_type,
+            "sections": [
+                {
+                    "activityTitle": title,
+                    "facts": [
+                        {"name": "Severity", "value": str(severity)},
+                    ],
+                    "text": incident.get("description") or "",
+                }
+            ],
         }
 
     @staticmethod

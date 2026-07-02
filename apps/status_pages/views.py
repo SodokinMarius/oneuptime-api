@@ -1,11 +1,11 @@
 """ViewSets for status_pages resources."""
-import secrets
-
+from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError as DRFValidationError
 
 from apps.rbac.permissions import PermissionMixin
 from core.team_scoping import TeamScopedViewMixin
@@ -20,8 +20,11 @@ from apps.status_pages.serializers import (
     StatusPagePublicSerializer,
     StatusPageResourceSerializer,
     StatusPageSerializer,
+    StatusPageSubscribeSerializer,
     StatusPageSubscriberSerializer,
+    SubscriberVerifySerializer,
 )
+from apps.status_pages.services.subscribers import SubscriberService
 
 
 class StatusPageViewSet(TeamScopedViewMixin, PermissionMixin, viewsets.ModelViewSet):
@@ -237,29 +240,65 @@ class StatusPagePublicViewSet(
         tags=["Status Pages (Public)"],
         summary="Subscribe to a status page",
         description=(
-            "Subscribe an email address to receive notifications for this status page. "
-            "A verification email will be sent."
+            "Subscribe an email address (and optional phone number in E.164 format) "
+            "to receive notifications for this status page. "
+            "Verification email and/or SMS will be sent when applicable."
         ),
+        request=StatusPageSubscribeSerializer,
     )
     @action(detail=True, methods=["post"])
     def subscribe(self, request, slug=None):
         page = self.get_object()
-        serializer = StatusPageSubscriberSerializer(data=request.data)
+        serializer = StatusPageSubscribeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        subscriber, created = StatusPageSubscriber.objects.get_or_create(
-            status_page=page,
+        result = SubscriberService.subscribe(
+            page,
             email=serializer.validated_data["email"],
-            defaults={
-                "tenant": page.tenant,
-                "verification_token": secrets.token_urlsafe(32),
-                "is_verified": False,
-            },
+            phone=serializer.validated_data.get("phone") or None,
         )
 
-        if created:
-            return Response(
-                {"detail": "Subscribed. Please check your email to verify."},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response({"detail": "This email is already subscribed."})
+        if not result.created and not result.email_verification_sent and not result.phone_verification_sent:
+            return Response({"detail": "This email is already subscribed."})
+
+        detail_parts = ["Subscribed."]
+        if result.email_verification_sent:
+            detail_parts.append("Please check your email to verify.")
+        if result.phone_verification_sent:
+            detail_parts.append("Please check your phone for SMS verification.")
+        return Response(
+            {"detail": " ".join(detail_parts)},
+            status=status.HTTP_201_CREATED if result.created else status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        tags=["Status Pages (Public)"],
+        summary="Verify subscriber email",
+        request=SubscriberVerifySerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="verify-email")
+    def verify_email(self, request, slug=None):
+        page = self.get_object()
+        serializer = SubscriberVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            SubscriberService.verify_email(page, serializer.validated_data["token"])
+        except DjangoValidationError as exc:
+            raise DRFValidationError({"token": exc.messages}) from exc
+        return Response({"detail": "Email verified. You will now receive status notifications."})
+
+    @extend_schema(
+        tags=["Status Pages (Public)"],
+        summary="Verify subscriber phone for SMS alerts",
+        request=SubscriberVerifySerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="verify-phone")
+    def verify_phone(self, request, slug=None):
+        page = self.get_object()
+        serializer = SubscriberVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            SubscriberService.verify_phone(page, serializer.validated_data["token"])
+        except DjangoValidationError as exc:
+            raise DRFValidationError({"token": exc.messages}) from exc
+        return Response({"detail": "Phone verified. You will now receive SMS notifications."})

@@ -15,6 +15,13 @@ class MaintenanceStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class RecurrenceFrequency(models.TextChoices):
+    NONE = "none", "None"
+    DAILY = "daily", "Daily"
+    WEEKLY = "weekly", "Weekly"
+    MONTHLY = "monthly", "Monthly"
+
+
 class ScheduledMaintenance(models.Model):
     """
     A planned maintenance window that affects one or more monitors.
@@ -50,6 +57,23 @@ class ScheduledMaintenance(models.Model):
     )
     is_visible_on_status_page = models.BooleanField(default=True)
     notify_subscribers = models.BooleanField(default=True)
+
+    recurrence_frequency = models.CharField(
+        max_length=20,
+        choices=RecurrenceFrequency.choices,
+        default=RecurrenceFrequency.NONE,
+    )
+    recurrence_interval = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Repeat every N days/weeks/months.",
+    )
+    recurrence_weekdays = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="For weekly recurrence: ISO weekdays 0=Monday … 6=Sunday.",
+    )
+    recurrence_until = models.DateTimeField(null=True, blank=True)
+    series_id = models.UUIDField(null=True, blank=True, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

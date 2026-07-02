@@ -1,4 +1,5 @@
 """Serializers for status_pages resources."""
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from rest_framework import serializers
@@ -89,8 +90,29 @@ class StatusPageAnnouncementSerializer(serializers.ModelSerializer):
 class StatusPageSubscriberSerializer(serializers.ModelSerializer):
     class Meta:
         model = StatusPageSubscriber
-        fields = ("id", "email", "is_verified", "subscribed_at")
-        read_only_fields = ("id", "is_verified", "subscribed_at")
+        fields = ("id", "email", "phone", "is_verified", "phone_verified", "subscribed_at")
+        read_only_fields = ("id", "is_verified", "phone_verified", "subscribed_at")
+
+
+class StatusPageSubscribeSerializer(serializers.Serializer):
+    """Public subscribe payload — email required, phone optional (E.164)."""
+
+    email = serializers.EmailField()
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=32)
+
+    def validate_phone(self, value: str) -> str:
+        from apps.status_pages.services.subscribers import SubscriberService
+
+        if not value or not str(value).strip():
+            return ""
+        try:
+            return SubscriberService.normalize_phone(value)
+        except ValidationError as exc:
+            raise serializers.ValidationError(exc.messages[0]) from exc
+
+
+class SubscriberVerifySerializer(serializers.Serializer):
+    token = serializers.CharField(min_length=8, max_length=64)
 
 
 class StatusPageSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):

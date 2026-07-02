@@ -4,11 +4,15 @@ from rest_framework import serializers
 from core.serializers import TeamScopeSerializerMixin
 
 from apps.incidents.models import (
+    EscalationPolicy,
+    EscalationStep,
     Incident,
+    IncidentEscalationState,
     IncidentNote,
     IncidentPostmortem,
     IncidentSeverity,
     IncidentState,
+    IncidentWorkflowRule,
 )
 
 
@@ -79,10 +83,25 @@ class IncidentPostmortemSerializer(serializers.ModelSerializer):
         return value
 
 
+class IncidentEscalationStateSerializer(serializers.ModelSerializer):
+    policy_name = serializers.CharField(source="policy.name", read_only=True)
+
+    class Meta:
+        model = IncidentEscalationState
+        fields = (
+            "policy",
+            "policy_name",
+            "current_step_order",
+            "last_escalated_at",
+            "completed",
+        )
+
+
 class IncidentSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
     state_name = serializers.CharField(source="state.name", read_only=True)
     severity_name = serializers.CharField(source="severity.name", read_only=True)
     is_resolved = serializers.BooleanField(read_only=True)
+    escalation_state = serializers.SerializerMethodField()
 
     class Meta:
         model = Incident
@@ -95,18 +114,26 @@ class IncidentSerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
             "team_id", "team_name",
             "assigned_to",
             "is_visible_on_status_page",
+            "escalation_state",
             "triggered_at",
             "acknowledged_at", "acknowledged_by",
             "resolved_at", "resolved_by",
             "created_at", "updated_at",
         )
         read_only_fields = (
-            "id", "state_name", "severity_name", "is_resolved",
+            "id", "state_name", "severity_name", "is_resolved", "escalation_state",
             "triggered_at",
             "acknowledged_at", "acknowledged_by",
             "resolved_at", "resolved_by",
             "created_at", "updated_at",
         )
+
+    def get_escalation_state(self, obj):
+        try:
+            state = obj.escalation_state
+        except IncidentEscalationState.DoesNotExist:
+            return None
+        return IncidentEscalationStateSerializer(state).data
 
     def validate(self, attrs):
         # severity and state must belong to the same project
@@ -141,3 +168,58 @@ class AddNoteSerializer(serializers.Serializer):
         elif "is_public" not in attrs:
             attrs["is_public"] = False
         return attrs
+
+
+class EscalationStepSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EscalationStep
+        fields = (
+            "id", "order", "delay_minutes", "action",
+            "webhook", "user", "target_severity", "created_at",
+        )
+        read_only_fields = ("id", "created_at")
+
+
+class EscalationPolicySerializer(TeamScopeSerializerMixin, serializers.ModelSerializer):
+    steps = EscalationStepSerializer(many=True, read_only=True)
+    step_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EscalationPolicy
+        fields = (
+            "id", "name", "description", "is_default", "is_active",
+            "severity_names", "team_id", "team_name",
+            "steps", "step_count",
+            "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "steps", "step_count", "created_at", "updated_at")
+
+    def get_step_count(self, obj) -> int:
+        return obj.steps.count()
+
+
+class EscalationStepWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EscalationStep
+        fields = ("order", "delay_minutes", "action", "webhook", "user", "target_severity")
+
+
+class IncidentWorkflowRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncidentWorkflowRule
+        fields = (
+            "id", "name", "trigger", "conditions", "actions",
+            "is_active", "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_actions(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("actions must be a list.")
+        allowed = {"webhook", "assign", "notify_user", "increase_severity"}
+        for action in value:
+            if action.get("type") not in allowed:
+                raise serializers.ValidationError(
+                    f"Unknown action type '{action.get('type')}'. Allowed: {sorted(allowed)}"
+                )
+        return value

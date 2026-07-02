@@ -1,10 +1,5 @@
 """
 Incident lifecycle services — atomic state transitions.
-
-All actions go through these services so that:
-  - State transitions are consistent
-  - Webhook events are always fired
-  - Audit log entries are always created
 """
 from django.db import transaction
 from django.utils import timezone
@@ -13,11 +8,20 @@ from django.utils import timezone
 def emit_incident_created(incident):
     """Fire webhook when an incident is created (manual or automatic)."""
     _emit("incident.created", incident)
+    try:
+        from apps.incidents.services.escalation import attach_escalation_policy
+        from apps.incidents.services.workflows import run_workflow_rules
+        from apps.incidents.models import IncidentWorkflowRule
+
+        attach_escalation_policy(incident)
+        run_workflow_rules(IncidentWorkflowRule.Trigger.INCIDENT_CREATED, incident)
+    except Exception:
+        pass
 
 
 def acknowledge_incident(incident, user):
     """Transition incident to 'acknowledged' state."""
-    from apps.incidents.models import IncidentState
+    from apps.incidents.models import IncidentEscalationState, IncidentState
 
     ack_state = IncidentState.objects.filter(
         project=incident.project, name="acknowledged"
@@ -30,6 +34,7 @@ def acknowledge_incident(incident, user):
         incident.acknowledged_at = timezone.now()
         incident.acknowledged_by = user
         incident.save(update_fields=["state", "acknowledged_at", "acknowledged_by", "updated_at"])
+        IncidentEscalationState.objects.filter(incident=incident).update(completed=True)
 
     _emit("incident.acknowledged", incident)
     return incident
@@ -37,7 +42,8 @@ def acknowledge_incident(incident, user):
 
 def resolve_incident(incident, user):
     """Transition incident to the resolved state."""
-    from apps.incidents.models import IncidentState
+    from apps.incidents.models import IncidentEscalationState, IncidentState, IncidentWorkflowRule
+    from apps.incidents.services.workflows import run_workflow_rules
 
     resolved_state = IncidentState.objects.filter(
         project=incident.project, is_resolved_state=True
@@ -51,12 +57,14 @@ def resolve_incident(incident, user):
         incident.resolved_by = user
         incident.save(update_fields=["state", "resolved_at", "resolved_by", "updated_at"])
 
-        # Detach from monitor if it was auto-created
         if incident.monitor_id:
             from apps.monitoring.models import Monitor
             Monitor.objects.filter(current_incident=incident).update(current_incident=None)
 
+        IncidentEscalationState.objects.filter(incident=incident).update(completed=True)
+
     _emit("incident.resolved", incident)
+    run_workflow_rules(IncidentWorkflowRule.Trigger.INCIDENT_RESOLVED, incident)
     return incident
 
 
@@ -84,10 +92,7 @@ def add_note(incident, author, content, is_public=False):
 
 
 def build_timeline(incident) -> list:
-    """
-    Build a unified chronological timeline for an incident,
-    merging audit log entries and notes.
-    """
+    """Build a unified chronological timeline for an incident."""
     events = []
 
     try:
@@ -115,7 +120,6 @@ def build_timeline(incident) -> list:
             "is_public": note.is_public,
         })
 
-    # Always include triggered_at as first event
     events.append({
         "type": "incident_triggered",
         "at": incident.triggered_at.isoformat(),
@@ -138,7 +142,7 @@ def build_timeline(incident) -> list:
 
 
 def _emit(event_type: str, incident):
-    """Fire webhook for incident events. Silently ignored if webhooks app not ready."""
+    """Fire webhook for incident events."""
     try:
         from apps.webhooks.services import WebhookService
         from apps.incidents.serializers import IncidentSerializer
