@@ -25,6 +25,7 @@ class Webhook(models.Model):
         JSON = "json", "JSON (default)"
         SLACK = "slack", "Slack Incoming Webhook"
         TEAMS = "teams", "Microsoft Teams Connector"
+        DISCORD = "discord", "Discord Webhook"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(

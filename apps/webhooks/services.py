@@ -72,18 +72,30 @@ class WebhookService:
             logger.error("WebhookService.emit failed for %s: %s", event_type, exc)
 
     @classmethod
+    def _event_matches(cls, subscribed: list, event_type: str) -> bool:
+        if not subscribed:
+            return False
+        for pattern in subscribed:
+            if pattern == "*":
+                return True
+            if pattern == event_type:
+                return True
+            if pattern.endswith(".*"):
+                prefix = pattern[:-2]
+                if event_type == prefix or event_type.startswith(prefix + "."):
+                    return True
+        return False
+
+    @classmethod
     def _subscribed_webhooks(cls, tenant, project, event_type: str):
         from apps.webhooks.models import Webhook
 
-        base = Webhook.objects.filter(
+        hooks = Webhook.objects.filter(
             tenant=tenant,
             project=project,
             is_active=True,
         )
-        specific = base.filter(event_types__contains=event_type)
-        if specific.exists():
-            return specific
-        return base.filter(event_types__contains="*")
+        return [h for h in hooks if cls._event_matches(h.event_types or [], event_type)]
 
     @classmethod
     def _build_payload(cls, tenant, project, event_type: str, event_id: str, data: dict, now, hook=None) -> dict:
@@ -103,6 +115,8 @@ class WebhookService:
             return cls._format_slack_payload(event_type, data)
         if fmt == "teams":
             return cls._format_teams_payload(event_type, data)
+        if fmt == "discord":
+            return cls._format_discord_payload(event_type, data)
         return base
 
     @staticmethod
@@ -114,6 +128,56 @@ class WebhookService:
         if incident.get("description"):
             text += f"\n{incident['description']}"
         return {"text": text}
+
+    @staticmethod
+    def _format_discord_payload(event_type: str, data: dict) -> dict:
+        incident = (data or {}).get("incident") or {}
+        monitor = (data or {}).get("monitor") or {}
+        maintenance = (data or {}).get("scheduled_maintenance") or {}
+        if incident:
+            title = incident.get("title") or event_type
+            severity = incident.get("severity_name") or incident.get("severity") or "n/a"
+            description = f"**{title}**\nSeverity: {severity}"
+            if incident.get("description"):
+                description += f"\n\n{incident['description']}"
+            color = 15158332  # red
+        elif monitor:
+            title = monitor.get("name") or event_type
+            previous = (data or {}).get("previous_status") or "n/a"
+            current = (data or {}).get("status") or monitor.get("status") or "n/a"
+            description = f"**{title}**\n{previous} → {current}"
+            color = 16776960 if current == "offline" else 3066993  # orange / green
+        elif maintenance:
+            title = maintenance.get("title") or event_type
+            lines = [f"**{title}**"]
+            if maintenance.get("starts_at"):
+                lines.append(f"Start: {maintenance['starts_at']}")
+            if maintenance.get("ends_at"):
+                lines.append(f"End: {maintenance['ends_at']}")
+            if maintenance.get("status"):
+                lines.append(f"Status: {maintenance['status']}")
+            if maintenance.get("description"):
+                lines.append(f"\n{maintenance['description']}")
+            description = "\n".join(lines)
+            if "started" in event_type:
+                color = 16753920  # orange
+            elif "ended" in event_type:
+                color = 3066993  # green
+            else:
+                color = 3447003  # blue
+        else:
+            title = event_type
+            description = event_type
+            color = 3447003  # blue
+        return {
+            "embeds": [
+                {
+                    "title": event_type[:256],
+                    "description": description[:4096],
+                    "color": color,
+                }
+            ]
+        }
 
     @staticmethod
     def _format_teams_payload(event_type: str, data: dict) -> dict:
