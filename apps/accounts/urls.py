@@ -10,6 +10,7 @@ from apps.accounts.views import (
     LoginView,
     LogoutView,
     MeView,
+    MePermissionsView,
     MfaConfirmView,
     MfaDisableView,
     MfaSetupView,
@@ -56,6 +57,7 @@ urlpatterns = [
 
     # Profile
     path('auth/me/', MeView.as_view(), name='me'),
+    path('auth/me/permissions/', MePermissionsView.as_view(), name='me-permissions'),
     path('auth/erase-account/', EraseMyAccountView.as_view(), name='erase-account'),
 
     # Users

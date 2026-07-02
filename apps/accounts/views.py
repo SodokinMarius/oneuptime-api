@@ -564,6 +564,25 @@ class MeView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
+class MePermissionsView(APIView):
+    """Effective RBAC permissions for the current user in the active project."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Auth'],
+        summary='Get current user permissions for the active project',
+        responses={200: {'type': 'object', 'properties': {'permissions': {'type': 'array', 'items': {'type': 'string'}}}}},
+    )
+    def get(self, request):
+        from apps.rbac.permissions import get_request_permissions
+
+        project = getattr(request, 'project', None)
+        if project is None:
+            return Response({'permissions': []})
+        perms = sorted(get_request_permissions(request, project))
+        return Response({'permissions': perms})
+
+
 class ChangePasswordView(APIView):
     """Change the current user's password."""
     permission_classes = [IsAuthenticated]
