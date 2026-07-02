@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { webhooksApi } from '@/api/webhooks'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
 import { Modal } from '@/components/ui/Modal'
-import { PageShell } from '@/components/ui/PageShell'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TeamSelect } from '@/components/ui/TeamSelect'
-import { IconChevronLeft } from '@/components/ui/Icons'
+import { DetailPageLayout } from '@/components/layout/DetailPageLayout'
+import { DetailSectionMenu } from '@/components/layout/DetailSectionMenu'
+import { IconGrid, IconBell } from '@/components/ui/Icons'
 import { formatDate } from '@/utils/format'
 import { teamIdPayload } from '@/utils/teamParams'
 import type { Webhook } from '@/types'
@@ -26,6 +27,7 @@ const PAYLOAD_FORMATS = [
   { value: 'json', label: 'JSON (default)' },
   { value: 'slack', label: 'Slack Incoming Webhook' },
   { value: 'teams', label: 'Microsoft Teams Connector' },
+  { value: 'discord', label: 'Discord Webhook' },
 ] as const
 
 function WebhookEditForm({ webhook, onClose }: { webhook: Webhook; onClose: () => void }) {
@@ -34,7 +36,7 @@ function WebhookEditForm({ webhook, onClose }: { webhook: Webhook; onClose: () =
   const [form, setForm] = useState({
     name: webhook.name,
     url: webhook.url,
-    payload_format: webhook.payload_format || 'json' as 'json' | 'slack' | 'teams',
+    payload_format: webhook.payload_format || 'json' as 'json' | 'slack' | 'teams' | 'discord',
     event_types: [...webhook.event_types],
     is_active: webhook.is_active,
   })
@@ -129,7 +131,9 @@ const statusColor: Record<string, string> = {
 
 export default function WebhookDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const view = searchParams.get('view') || 'overview'
+  const basePath = `/webhooks/${id}`
   const qc = useQueryClient()
   const [showEdit, setShowEdit] = useState(false)
 
@@ -142,7 +146,7 @@ export default function WebhookDetailPage() {
   const { data: deliveries, isLoading: loadingDeliveries } = useQuery({
     queryKey: ['webhook-deliveries', id],
     queryFn: () => webhooksApi.deliveries(id!).then(r => r.data),
-    enabled: !!id,
+    enabled: !!id && view === 'deliveries',
   })
 
   const retryMutation = useMutation({
@@ -152,101 +156,116 @@ export default function WebhookDetailPage() {
 
   const deleteMutation = useMutation({
     mutationFn: () => webhooksApi.delete(id!),
-    onSuccess: () => navigate('/webhooks'),
+    onSuccess: () => { window.location.href = '/webhooks' },
   })
 
   if (isLoading) return <Spinner label="Loading…" />
-
   if (!webhook) return null
 
   return (
-    <PageShell size="narrow">
-      <button onClick={() => navigate(-1)} className="back-link">
-        <IconChevronLeft size={16} />
-        Back to webhooks
-      </button>
-
-      <div className="detail-header">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h2 className="page-header">{webhook.name}</h2>
+    <>
+      <DetailPageLayout
+        embedded
+        breadcrumbs={[
+          { label: 'Webhooks', to: '/webhooks' },
+          { label: webhook.name },
+        ]}
+        title={webhook.name}
+        subtitle={<span className="font-mono text-sm break-all">{webhook.url}</span>}
+        badges={
+          <>
             <Badge label={webhook.is_active ? 'Active' : 'Inactive'} />
             <TeamBadge teamId={webhook.team_id} teamName={webhook.team_name} />
-          </div>
-          <p className="text-sm text-gray-500 font-mono break-all">{webhook.url}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setShowEdit(true)}>Edit</Button>
-          <Button variant="danger" onClick={() => { if (confirm('Delete this webhook?')) deleteMutation.mutate() }}>
-            Delete
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-        <div className="lg:col-span-1 card p-4 sm:p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700">Details</h3>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Created on</p>
-            <p className="text-sm text-gray-700">{formatDate(webhook.created_at)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Payload format</p>
-            <p className="text-sm text-gray-700 capitalize">{webhook.payload_format || 'json'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Events ({webhook.event_types.length})</p>
-            <div className="flex flex-wrap gap-1">
-              {webhook.event_types.map(ev => (
-                <span key={ev} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{ev}</span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Secret</p>
-            <p className="text-sm text-gray-700 font-mono">{webhook.secret ? '••••••••' : '—'}</p>
-          </div>
-        </div>
-
-        {/* Deliveries */}
-        <div className="lg:col-span-2 card p-4 sm:p-5">
-          <h3 className="section-title mb-4">Delivery history (last 100)</h3>
-          {loadingDeliveries ? (
-            <Spinner size="sm" />
-          ) : !deliveries || deliveries.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No deliveries yet.</p>
-          ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {deliveries.map(d => (
-                <div key={d.id} className="flex items-start justify-between py-2 border-b border-gray-50 last:border-0 gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[d.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                        {d.status}
-                      </span>
-                      <span className="text-xs text-gray-500 font-mono">{d.event}</span>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowEdit(true)}>Edit</Button>
+            <Button variant="danger" onClick={() => { if (confirm('Delete this webhook?')) deleteMutation.mutate() }}>
+              Delete
+            </Button>
+          </>
+        }
+        sideMenu={
+          <DetailSectionMenu
+            basePath={basePath}
+            defaultView="overview"
+            sections={[
+              {
+                title: 'Webhook',
+                items: [
+                  { id: 'overview', label: 'Overview', icon: <IconGrid /> },
+                  { id: 'deliveries', label: 'Deliveries', icon: <IconBell /> },
+                ],
+              },
+            ]}
+          />
+        }
+      >
+        {view === 'deliveries' ? (
+          <div className="card p-4 sm:p-5">
+            <h3 className="section-title mb-4">Delivery history (last 100)</h3>
+            {loadingDeliveries ? (
+              <Spinner size="sm" />
+            ) : !deliveries || deliveries.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">No deliveries yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {deliveries.map(d => (
+                  <div key={d.id} className="flex items-start justify-between py-2 border-b border-gray-50 last:border-0 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[d.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                          {d.status}
+                        </span>
+                        <span className="text-xs text-gray-500 font-mono">{d.event}</span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {d.response_status ? `HTTP ${d.response_status}` : '—'} · Attempt {d.attempt} · {formatDate(d.created_at)}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400">
-                      {d.response_status ? `HTTP ${d.response_status}` : '—'} · Attempt {d.attempt} · {formatDate(d.created_at)}
-                    </p>
+                    {(d.status === 'failed' || d.status === 'exhausted') && (
+                      <button onClick={() => retryMutation.mutate(d.id)}
+                        disabled={retryMutation.isPending}
+                        className="btn-ghost btn-sm text-brand-600 shrink-0 disabled:opacity-50">
+                        Retry
+                      </button>
+                    )}
                   </div>
-                  {(d.status === 'failed' || d.status === 'exhausted') && (
-                    <button onClick={() => retryMutation.mutate(d.id)}
-                      disabled={retryMutation.isPending}
-                      className="btn-ghost btn-sm text-brand-600 shrink-0 disabled:opacity-50">
-                      Retry
-                    </button>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="card p-4 sm:p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Details</h3>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Created on</p>
+              <p className="text-sm text-gray-700">{formatDate(webhook.created_at)}</p>
             </div>
-          )}
-        </div>
-      </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Payload format</p>
+              <p className="text-sm text-gray-700 capitalize">{webhook.payload_format || 'json'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Events ({webhook.event_types.length})</p>
+              <div className="flex flex-wrap gap-1">
+                {webhook.event_types.map(ev => (
+                  <span key={ev} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{ev}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Secret</p>
+              <p className="text-sm text-gray-700 font-mono">{webhook.secret ? '••••••••' : '—'}</p>
+            </div>
+          </div>
+        )}
+      </DetailPageLayout>
 
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit webhook" size="lg">
         <WebhookEditForm webhook={webhook} onClose={() => setShowEdit(false)} />
       </Modal>
-    </PageShell>
+    </>
   )
 }

@@ -6,7 +6,18 @@ import ActivatePage from '@/pages/auth/ActivatePage'
 import AcceptInvitePage from '@/pages/auth/AcceptInvitePage'
 import SSOCallbackPage from '@/pages/auth/SSOCallbackPage'
 import AppLayout from '@/components/layout/AppLayout'
-import DashboardPage from '@/pages/dashboard/DashboardPage'
+import MonitorsLayout from '@/pages/monitors/MonitorsLayout'
+import IncidentsLayout from '@/pages/incidents/IncidentsLayout'
+import MaintenanceLayout from '@/pages/maintenance/MaintenanceLayout'
+import StatusPagesLayout from '@/pages/status-pages/StatusPagesLayout'
+import WebhooksLayout from '@/pages/webhooks/WebhooksLayout'
+import AuditLayout from '@/pages/audit/AuditLayout'
+import UsersLayout from '@/pages/users/UsersLayout'
+import SettingsLayout from '@/pages/settings/SettingsLayout'
+import DashboardLayout, { DashboardIndexRedirect } from '@/pages/dashboard/DashboardLayout'
+import ActiveIncidentsView from '@/pages/dashboard/ActiveIncidentsView'
+import OfflineMonitorsView from '@/pages/dashboard/OfflineMonitorsView'
+import OngoingMaintenanceView from '@/pages/dashboard/OngoingMaintenanceView'
 import MonitorsPage from '@/pages/monitors/MonitorsPage'
 import MonitorDetailPage from '@/pages/monitors/MonitorDetailPage'
 import IncidentsPage from '@/pages/incidents/IncidentsPage'
@@ -44,19 +55,44 @@ export const router = createBrowserRouter([
     element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
       { index: true,                      element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard',                element: <DashboardPage /> },
-      { path: 'monitors',                 element: <MonitorsPage /> },
-      { path: 'monitors/:id',             element: <MonitorDetailPage /> },
-      { path: 'incidents',                element: <IncidentsPage /> },
-      { path: 'incidents/:id',            element: <IncidentDetailPage /> },
-      { path: 'maintenance',              element: <MaintenancePage /> },
-      { path: 'status-pages',             element: <StatusPagesPage /> },
-      { path: 'status-pages/:id',         element: <StatusPageDetailPage /> },
-      { path: 'webhooks',                 element: <WebhooksPage /> },
-      { path: 'webhooks/:id',             element: <WebhookDetailPage /> },
-      { path: 'audit',                    element: <AuditPage /> },
-      { path: 'users',                    element: <UsersPage /> },
-      { path: 'settings',                 element: <SettingsPage /> },
+      {
+        path: 'dashboard',
+        element: <DashboardLayout />,
+        children: [
+          { index: true, element: <DashboardIndexRedirect /> },
+          { path: 'active-incidents', element: <ActiveIncidentsView /> },
+          { path: 'offline-monitors', element: <OfflineMonitorsView /> },
+          { path: 'ongoing-maintenance', element: <OngoingMaintenanceView /> },
+        ],
+      },
+      { path: 'monitors', element: <MonitorsLayout />, children: [
+          { index: true, element: <MonitorsPage /> },
+          { path: ':id', element: <MonitorDetailPage /> },
+      ]},
+      { path: 'incidents', element: <IncidentsLayout />, children: [
+          { index: true, element: <IncidentsPage /> },
+          { path: ':id', element: <IncidentDetailPage /> },
+      ]},
+      { path: 'maintenance', element: <MaintenanceLayout />, children: [
+          { index: true, element: <MaintenancePage /> },
+      ]},
+      { path: 'status-pages', element: <StatusPagesLayout />, children: [
+          { index: true, element: <StatusPagesPage /> },
+          { path: ':id', element: <StatusPageDetailPage /> },
+      ]},
+      { path: 'webhooks', element: <WebhooksLayout />, children: [
+          { index: true, element: <WebhooksPage /> },
+          { path: ':id', element: <WebhookDetailPage /> },
+      ]},
+      { path: 'audit', element: <AuditLayout />, children: [
+          { index: true, element: <AuditPage /> },
+      ]},
+      { path: 'users', element: <UsersLayout />, children: [
+          { index: true, element: <UsersPage /> },
+      ]},
+      { path: 'settings', element: <SettingsLayout />, children: [
+          { index: true, element: <SettingsPage /> },
+      ]},
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

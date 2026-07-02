@@ -47,6 +47,9 @@ export const authApi = {
   me: () =>
     client.get<AuthUser>('/auth/me'),
 
+  permissions: () =>
+    client.get<{ permissions: string[] }>('/auth/me/permissions'),
+
   updateProfile: (data: { first_name?: string; last_name?: string; session_timeout_minutes?: number }) =>
     client.patch<AuthUser>('/auth/me', data),
 

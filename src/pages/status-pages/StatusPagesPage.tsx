@@ -1,11 +1,11 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { statusPagesApi } from '@/api/statusPages'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageShell } from '@/components/ui/PageShell'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { ListPageLayout } from '@/components/layout/ListPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { IconGlobe, IconPlus } from '@/components/ui/Icons'
@@ -14,6 +14,39 @@ import { TeamFilter } from '@/components/ui/TeamFilter'
 import { TeamSelect } from '@/components/ui/TeamSelect'
 import { formatRelative } from '@/utils/format'
 import { teamIdPayload, withTeamFilter } from '@/utils/teamParams'
+import type { StatusPage } from '@/types'
+
+type StatusPageView = 'all' | 'public' | 'private'
+
+const VIEW_CONFIG: Record<StatusPageView, { title: string; subtitle: string; breadcrumb: string; emptyTitle: string; emptyDescription: string }> = {
+  all: {
+    title: 'Status Pages',
+    subtitle: 'Here is a list of status pages for this project.',
+    breadcrumb: 'All pages',
+    emptyTitle: 'No status pages',
+    emptyDescription: 'Create a public page to communicate the status of your services.',
+  },
+  public: {
+    title: 'Public pages',
+    subtitle: 'Status pages accessible without authentication.',
+    breadcrumb: 'Public pages',
+    emptyTitle: 'No public pages',
+    emptyDescription: 'No public status pages configured.',
+  },
+  private: {
+    title: 'Private pages',
+    subtitle: 'Status pages requiring authentication.',
+    breadcrumb: 'Private pages',
+    emptyTitle: 'No private pages',
+    emptyDescription: 'No private status pages configured.',
+  },
+}
+
+function filterByView(pages: StatusPage[], view: StatusPageView): StatusPage[] {
+  if (view === 'public') return pages.filter(p => p.is_public)
+  if (view === 'private') return pages.filter(p => !p.is_public)
+  return pages
+}
 
 function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
   const [teamId, setTeamId] = useState('')
@@ -74,12 +107,16 @@ function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function StatusPagesPage() {
+  const [searchParams] = useSearchParams()
+  const view = (searchParams.get('view') || 'all') as StatusPageView
+  const config = VIEW_CONFIG[view] ?? VIEW_CONFIG.all
+
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [teamFilter, setTeamFilter] = useState('')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['status-pages', teamFilter],
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['status-pages', teamFilter, view],
     queryFn: () => statusPagesApi.list(withTeamFilter({}, teamFilter)).then(r => r.data),
   })
 
@@ -88,20 +125,24 @@ export default function StatusPagesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['status-pages'] }),
   })
 
-  const pages = data?.results ?? []
+  const pages = filterByView(data?.results ?? [], view)
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Status Pages"
-        subtitle={`${data?.count ?? 0} page${(data?.count ?? 0) > 1 ? 's' : ''}`}
-        actions={
-          <Button onClick={() => setShowCreate(true)} fullWidth>
-            <IconPlus size={16} />
-            New page
-          </Button>
-        }
-      />
+    <ListPageLayout
+      embedded
+      breadcrumbs={[
+        { label: 'Status Pages', to: '/status-pages' },
+        { label: config.breadcrumb },
+      ]}
+      title={config.title}
+      subtitle={config.subtitle}
+      actions={
+        <Button onClick={() => setShowCreate(true)} fullWidth>
+          <IconPlus size={16} />
+          New page
+        </Button>
+      }
+    >
 
       <div className="filter-bar">
         <TeamFilter value={teamFilter} onChange={setTeamFilter} />
@@ -112,47 +153,90 @@ export default function StatusPagesPage() {
       ) : pages.length === 0 ? (
         <EmptyState
           icon={<IconGlobe size={24} />}
-          title="No status pages"
-          description="Create a public page to communicate the status of your services."
-          action={<Button onClick={() => setShowCreate(true)}>Create page</Button>}
+          title={config.emptyTitle}
+          description={config.emptyDescription}
+          action={
+            view === 'all' ? (
+              <Button onClick={() => setShowCreate(true)}>Create page</Button>
+            ) : (
+              <Button variant="secondary" onClick={() => refetch()}>Refresh</Button>
+            )
+          }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {pages.map(p => (
-            <div key={p.id} className="card p-4 sm:p-5 hover:shadow-md transition-all duration-200 flex flex-col">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">{p.name}</h3>
-                  <span className="text-xs text-brand-600 font-mono">/status/{p.slug}</span>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.is_public ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {p.is_public ? 'Public' : 'Private'}
-                  </span>
-                  <TeamBadge teamId={p.team_id} teamName={p.team_name} />
-                </div>
-              </div>
-              {p.description && <p className="text-sm text-gray-500 mb-3 line-clamp-2 flex-1">{p.description}</p>}
-              <p className="text-xs text-gray-400 mb-4">Created {formatRelative(p.created_at)}</p>
-              <div className="flex flex-wrap gap-2 mt-auto">
-                <Link to={`/status-pages/${p.id}`} className="btn-secondary btn-sm flex-1 text-center justify-center">
-                  Manage
-                </Link>
-                <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
-                  Open ↗
-                </a>
-                <Button variant="danger" size="sm" onClick={() => { if (confirm('Delete this page?')) deleteMut.mutate(p.id) }}>
-                  Del.
-                </Button>
-              </div>
+        <>
+          <div className="table-wrap">
+            <div className="table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="table-th">Name</th>
+                    <th className="table-th hidden sm:table-cell">Slug</th>
+                    <th className="table-th hidden md:table-cell">Description</th>
+                    <th className="table-th hidden md:table-cell">Team</th>
+                    <th className="table-th">Visibility</th>
+                    <th className="table-th hidden lg:table-cell">Created</th>
+                    <th className="table-th text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {pages.map(p => (
+                    <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="table-td">
+                        <Link
+                          to={`/status-pages/${p.id}`}
+                          className="font-medium text-gray-900 hover:text-brand-600 transition-colors truncate block max-w-[200px]"
+                        >
+                          {p.name}
+                        </Link>
+                      </td>
+                      <td className="table-td hidden sm:table-cell">
+                        <span className="font-mono text-xs text-brand-600">/status/{p.slug}</span>
+                      </td>
+                      <td className="table-td text-gray-500 hidden md:table-cell max-w-[240px] truncate">
+                        {p.description || <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="table-td hidden md:table-cell">
+                        <TeamBadge teamId={p.team_id} teamName={p.team_name} />
+                      </td>
+                      <td className="table-td">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.is_public ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {p.is_public ? 'Public' : 'Private'}
+                        </span>
+                      </td>
+                      <td className="table-td text-gray-400 hidden lg:table-cell whitespace-nowrap">
+                        {formatRelative(p.created_at)}
+                      </td>
+                      <td className="table-td">
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <Link to={`/status-pages/${p.id}`} className="btn-secondary btn-sm">
+                            Manage
+                          </Link>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => { if (confirm('Delete this page?')) deleteMut.mutate(p.id) }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+
+          <p className="text-sm text-gray-500 mt-4">
+            {pages.length} page{pages.length !== 1 ? 's' : ''} shown.
+          </p>
+        </>
       )}
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New status page">
         <StatusPageForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['status-pages'] }) }} />
       </Modal>
-    </PageShell>
+    </ListPageLayout>
   )
 }

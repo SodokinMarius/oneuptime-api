@@ -1,25 +1,26 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incidentsApi, unwrapIncidentList, type TimelineEntry } from '@/api/incidents'
 import { usersApi } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
 import { Modal } from '@/components/ui/Modal'
-import { PageShell } from '@/components/ui/PageShell'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { Tabs } from '@/components/ui/Tabs'
-import { IconChevronLeft } from '@/components/ui/Icons'
+import { DetailPageLayout } from '@/components/layout/DetailPageLayout'
+import { DetailSectionMenu } from '@/components/layout/DetailSectionMenu'
+import { IconFileText, IconClock, IconFileText as IconPostmortem } from '@/components/ui/Icons'
 import { formatDate, formatRelative } from '@/utils/format'
 
 type Tab = 'notes' | 'timeline' | 'postmortem'
 
 export default function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const activeTab = (searchParams.get('view') || 'notes') as Tab
+  const basePath = `/incidents/${id}`
   const qc = useQueryClient()
-  const [activeTab, setActiveTab] = useState<Tab>('notes')
   const [noteContent, setNoteContent] = useState('')
   const [noteInternal, setNoteInternal] = useState(false)
   const [timelineMsg, setTimelineMsg] = useState('')
@@ -93,66 +94,73 @@ export default function IncidentDetailPage() {
   if (!incident) return null
 
   const isResolved = incident.is_resolved || incident.state_name === 'resolved'
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'notes', label: 'Notes' },
-    { id: 'timeline', label: 'Timeline' },
-    { id: 'postmortem', label: 'Postmortem' },
-  ]
 
   return (
-    <PageShell size="narrow">
-      <button onClick={() => navigate(-1)} className="back-link">
-        <IconChevronLeft size={16} />
-        Back to incidents
-      </button>
-
-      <div className="detail-header">
-        <div className="min-w-0">
-          <h2 className="page-header">{incident.title}</h2>
-          {incident.description && <p className="page-subtext mt-2">{incident.description}</p>}
-          <div className="flex flex-wrap items-center gap-2 mt-3">
+    <>
+      <DetailPageLayout
+        embedded
+        breadcrumbs={[
+          { label: 'Incidents', to: '/incidents' },
+          { label: incident.title },
+        ]}
+        title={incident.title}
+        subtitle={incident.description}
+        badges={
+          <>
             {incident.severity_name && <Badge label={incident.severity_name} />}
             {incident.state_name && <Badge label={incident.state_name} />}
             <TeamBadge teamId={incident.team_id} teamName={incident.team_name} />
             <span className="text-xs text-gray-400">{formatRelative(incident.created_at)}</span>
-          </div>
-          {incident.escalation_state && !isResolved && (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-              <p className="font-medium text-amber-900">
-                Escalation: {incident.escalation_state.policy_name}
-              </p>
-              <p className="text-amber-800 mt-1">
-                Step {incident.escalation_state.current_step_order}
-                {incident.escalation_state.completed ? ' · completed' : ' · in progress'}
-                {incident.escalation_state.last_escalated_at && (
-                  <> · last escalated {formatRelative(incident.escalation_state.last_escalated_at)}</>
-                )}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-6">
-        {!isResolved && (
-          <>
-            <Button variant="warning" onClick={() => ackMutation.mutate()} disabled={ackMutation.isPending}>
-              {ackMutation.isPending ? '…' : 'Acknowledge'}
-            </Button>
-            <Button variant="success" onClick={() => resolveMutation.mutate()} disabled={resolveMutation.isPending}>
-              {resolveMutation.isPending ? '…' : 'Resolve'}
-            </Button>
-            <Button variant="secondary" onClick={() => setShowAssign(true)}>Assign</Button>
           </>
+        }
+        actions={
+          !isResolved ? (
+            <>
+              <Button variant="warning" onClick={() => ackMutation.mutate()} disabled={ackMutation.isPending}>
+                {ackMutation.isPending ? '…' : 'Acknowledge'}
+              </Button>
+              <Button variant="success" onClick={() => resolveMutation.mutate()} disabled={resolveMutation.isPending}>
+                {resolveMutation.isPending ? '…' : 'Resolve'}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowAssign(true)}>Assign</Button>
+            </>
+          ) : activeTab === 'postmortem' ? (
+            <Button onClick={() => setShowPostmortem(true)}>
+              {postmortem ? 'Edit' : 'Write'} postmortem
+            </Button>
+          ) : undefined
+        }
+        sideMenu={
+          <DetailSectionMenu
+            basePath={basePath}
+            defaultView="notes"
+            sections={[
+              {
+                title: 'Incident',
+                items: [
+                  { id: 'notes', label: 'Notes', icon: <IconFileText /> },
+                  { id: 'timeline', label: 'Timeline', icon: <IconClock /> },
+                  { id: 'postmortem', label: 'Postmortem', icon: <IconPostmortem /> },
+                ],
+              },
+            ]}
+          />
+        }
+      >
+        {incident.escalation_state && !isResolved && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+            <p className="font-medium text-amber-900">
+              Escalation: {incident.escalation_state.policy_name}
+            </p>
+            <p className="text-amber-800 mt-1">
+              Step {incident.escalation_state.current_step_order}
+              {incident.escalation_state.completed ? ' · completed' : ' · in progress'}
+              {incident.escalation_state.last_escalated_at && (
+                <> · last escalated {formatRelative(incident.escalation_state.last_escalated_at)}</>
+              )}
+            </p>
+          </div>
         )}
-        {isResolved && activeTab === 'postmortem' && (
-          <Button onClick={() => setShowPostmortem(true)}>
-            {postmortem ? 'Edit' : 'Write'} postmortem
-          </Button>
-        )}
-      </div>
-
-      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Notes */}
       {activeTab === 'notes' && (
@@ -284,6 +292,8 @@ export default function IncidentDetailPage() {
         </div>
       )}
 
+      </DetailPageLayout>
+
       {/* Assign Modal */}
       <Modal open={showAssign} onClose={() => setShowAssign(false)} title="Assign incident" size="sm">
         <AssignForm incidentId={id!} onClose={() => setShowAssign(false)} />
@@ -293,7 +303,7 @@ export default function IncidentDetailPage() {
       <Modal open={showPostmortem} onClose={() => setShowPostmortem(false)} title="Postmortem" size="lg">
         <PostmortemForm incidentId={id!} existing={postmortem} onClose={() => setShowPostmortem(false)} />
       </Modal>
-    </PageShell>
+    </>
   )
 }
 

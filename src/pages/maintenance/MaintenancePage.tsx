@@ -1,12 +1,12 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { maintenanceApi } from '@/api/maintenance'
 import { monitorsApi } from '@/api/monitors'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageShell } from '@/components/ui/PageShell'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { ListPageLayout } from '@/components/layout/ListPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatDate } from '@/utils/format'
@@ -16,7 +16,47 @@ import { TeamBadge } from '@/components/ui/TeamBadge'
 import { TeamFilter } from '@/components/ui/TeamFilter'
 import { TeamSelect } from '@/components/ui/TeamSelect'
 import { teamIdPayload, withTeamFilter } from '@/utils/teamParams'
-import type { Maintenance } from '@/types'
+import type { Maintenance, MaintenanceStatus } from '@/types'
+
+type MaintenanceView = 'all' | MaintenanceStatus
+
+const VIEW_CONFIG: Record<MaintenanceView, { title: string; subtitle: string; breadcrumb: string; emptyTitle: string; emptyDescription: string }> = {
+  all: {
+    title: 'Scheduled maintenance',
+    subtitle: 'Here is a list of maintenance windows for this project.',
+    breadcrumb: 'All windows',
+    emptyTitle: 'No scheduled maintenance',
+    emptyDescription: 'Schedule maintenance windows to suppress alerts.',
+  },
+  scheduled: {
+    title: 'Scheduled',
+    subtitle: 'Upcoming maintenance windows.',
+    breadcrumb: 'Scheduled',
+    emptyTitle: 'No scheduled windows',
+    emptyDescription: 'No upcoming maintenance is planned.',
+  },
+  in_progress: {
+    title: 'In progress',
+    subtitle: 'Maintenance windows currently active.',
+    breadcrumb: 'In progress',
+    emptyTitle: 'No ongoing maintenance',
+    emptyDescription: 'No maintenance is in progress right now.',
+  },
+  completed: {
+    title: 'Completed',
+    subtitle: 'Finished maintenance windows.',
+    breadcrumb: 'Completed',
+    emptyTitle: 'No completed maintenance',
+    emptyDescription: 'No maintenance has been completed yet.',
+  },
+  cancelled: {
+    title: 'Cancelled',
+    subtitle: 'Cancelled maintenance windows.',
+    breadcrumb: 'Cancelled',
+    emptyTitle: 'No cancelled maintenance',
+    emptyDescription: 'No maintenance has been cancelled.',
+  },
+}
 
 const WEEKDAYS = [
   { value: 0, label: 'Mon' },
@@ -264,14 +304,20 @@ function MaintenanceForm({
 }
 
 export default function MaintenancePage() {
+  const [searchParams] = useSearchParams()
+  const view = (searchParams.get('view') || 'all') as MaintenanceView
+  const config = VIEW_CONFIG[view] ?? VIEW_CONFIG.all
+
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [editItem, setEditItem] = useState<Maintenance | null>(null)
   const [teamFilter, setTeamFilter] = useState('')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['maintenance', teamFilter],
-    queryFn: () => maintenanceApi.list(withTeamFilter({}, teamFilter)).then(r => r.data),
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['maintenance', teamFilter, view],
+    queryFn: () => maintenanceApi.list(withTeamFilter({
+      ...(view !== 'all' ? { status: view } : {}),
+    }, teamFilter)).then(r => r.data),
   })
 
   const cancelMut = useMutation({
@@ -293,17 +339,21 @@ export default function MaintenancePage() {
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Scheduled maintenance"
-        subtitle={`${data?.count ?? 0} window${(data?.count ?? 0) > 1 ? 's' : ''}`}
-        actions={
-          <Button onClick={() => setShowCreate(true)} fullWidth>
-            <IconPlus size={16} />
-            Schedule maintenance
-          </Button>
-        }
-      />
+    <ListPageLayout
+      embedded
+      breadcrumbs={[
+        { label: 'Maintenance', to: '/maintenance' },
+        { label: config.breadcrumb },
+      ]}
+      title={config.title}
+      subtitle={config.subtitle}
+      actions={
+        <Button onClick={() => setShowCreate(true)} fullWidth>
+          <IconPlus size={16} />
+          Schedule maintenance
+        </Button>
+      }
+    >
 
       <div className="filter-bar">
         <TeamFilter value={teamFilter} onChange={setTeamFilter} />
@@ -314,9 +364,15 @@ export default function MaintenancePage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={<IconWrench size={24} />}
-          title="No scheduled maintenance"
-          description="Schedule maintenance windows to suppress alerts."
-          action={<Button onClick={() => setShowCreate(true)}>Schedule</Button>}
+          title={config.emptyTitle}
+          description={config.emptyDescription}
+          action={
+            view === 'all' ? (
+              <Button onClick={() => setShowCreate(true)}>Schedule</Button>
+            ) : (
+              <Button variant="secondary" onClick={() => refetch()}>Refresh</Button>
+            )
+          }
         />
       ) : (
         <div className="card-list">
@@ -366,6 +422,12 @@ export default function MaintenancePage() {
         </div>
       )}
 
+      {!isLoading && items.length > 0 && (
+        <p className="text-sm text-gray-500 mt-4">
+          {items.length} window{items.length !== 1 ? 's' : ''} shown.
+        </p>
+      )}
+
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Schedule maintenance" size="lg">
         <MaintenanceForm onSuccess={onFormSuccess} />
       </Modal>
@@ -373,6 +435,6 @@ export default function MaintenancePage() {
       <Modal open={!!editItem} onClose={() => setEditItem(null)} title="Edit maintenance" size="lg">
         {editItem && <MaintenanceForm item={editItem} onSuccess={onFormSuccess} />}
       </Modal>
-    </PageShell>
+    </ListPageLayout>
   )
 }

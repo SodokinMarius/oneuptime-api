@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { auditApi } from '@/api/audit'
-import { PageShell } from '@/components/ui/PageShell'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { ListPageLayout } from '@/components/layout/ListPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatDate } from '@/utils/format'
@@ -17,11 +17,28 @@ const ACTOR_TYPE_LABELS: Record<string, string> = {
 }
 const RESOURCE_TYPES = ['', 'incident', 'monitor', 'role', 'team', 'project', 'webhook', 'api_key', 'user']
 
+const VIEW_CONFIG: Record<string, { title: string; subtitle: string; breadcrumb: string }> = {
+  all: {
+    title: 'Audit log',
+    subtitle: 'Immutable SHA-256 hash chain log for this project.',
+    breadcrumb: 'All entries',
+  },
+  incident: { title: 'Incident audit log', subtitle: 'Audit entries for incidents.', breadcrumb: 'Incidents' },
+  monitor: { title: 'Monitor audit log', subtitle: 'Audit entries for monitors.', breadcrumb: 'Monitors' },
+  webhook: { title: 'Webhook audit log', subtitle: 'Audit entries for webhooks.', breadcrumb: 'Webhooks' },
+  user: { title: 'User audit log', subtitle: 'Audit entries for users.', breadcrumb: 'Users' },
+  api_key: { title: 'API key audit log', subtitle: 'Audit entries for API keys.', breadcrumb: 'API keys' },
+}
+
 function actorTypeLabel(type: string) {
   return ACTOR_TYPE_LABELS[type] ?? type
 }
 
 export default function AuditPage() {
+  const [searchParams] = useSearchParams()
+  const view = searchParams.get('view') || 'all'
+  const config = VIEW_CONFIG[view] ?? VIEW_CONFIG.all
+
   const [filters, setFilters] = useState({
     action: '', resource_type: '', actor_type: '', since: '', until: '',
   })
@@ -29,8 +46,17 @@ export default function AuditPage() {
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ valid: boolean; checked: number } | null>(null)
 
+  useEffect(() => {
+    if (view !== 'all') {
+      setFilters(f => ({ ...f, resource_type: view }))
+      setPage(1)
+    } else {
+      setFilters(f => ({ ...f, resource_type: '' }))
+    }
+  }, [view])
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['audit-log', filters, page],
+    queryKey: ['audit-log', filters, page, view],
     queryFn: () => auditApi.list({
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
       page: String(page),
@@ -65,21 +91,24 @@ export default function AuditPage() {
   const hasPrevPage = page > 1
 
   return (
-    <PageShell size="wide">
-      <PageHeader
-        title="Audit log"
-        subtitle="Immutable SHA-256 hash chain log"
-        actions={
-          <>
-            <Button variant="secondary" onClick={handleVerify} disabled={verifying}>
-              {verifying ? 'Verifying…' : 'Verify integrity'}
-            </Button>
-            <Button variant="secondary" onClick={() => handleExport('csv')}>↓ CSV</Button>
-            <Button variant="secondary" onClick={() => handleExport('jsonl')}>↓ JSONL</Button>
-          </>
-        }
-      />
-
+    <ListPageLayout
+      embedded
+      breadcrumbs={[
+        { label: 'Audit Log', to: '/audit' },
+        { label: config.breadcrumb },
+      ]}
+      title={config.title}
+      subtitle={config.subtitle}
+      actions={
+        <>
+          <Button variant="secondary" onClick={handleVerify} disabled={verifying}>
+            {verifying ? 'Verifying…' : 'Verify integrity'}
+          </Button>
+          <Button variant="secondary" onClick={() => handleExport('csv')}>↓ CSV</Button>
+          <Button variant="secondary" onClick={() => handleExport('jsonl')}>↓ JSONL</Button>
+        </>
+      }
+    >
       {verifyResult && (
         <div className={`rounded-xl p-4 mb-6 border flex items-center gap-3 ${verifyResult.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
           <span>{verifyResult.valid ? '✅' : '❌'}</span>
@@ -144,8 +173,8 @@ export default function AuditPage() {
                   <tr className="border-b border-gray-100 bg-gray-50/60">
                     <th className="table-th">Date</th>
                     <th className="table-th">Action</th>
-                    <th className="table-th">Ressource</th>
-                    <th className="table-th">Acteur</th>
+                    <th className="table-th">Resource</th>
+                    <th className="table-th">Actor</th>
                     <th className="table-th">IP</th>
                   </tr>
                 </thead>
@@ -209,6 +238,6 @@ export default function AuditPage() {
           </>
         )}
       </div>
-    </PageShell>
+    </ListPageLayout>
   )
 }

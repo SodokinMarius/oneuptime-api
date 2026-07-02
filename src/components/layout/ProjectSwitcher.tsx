@@ -7,10 +7,11 @@ import { useProjectSwitch } from '@/hooks/useProjectSwitch'
 import { IconFolder, IconChevronDown } from '@/components/ui/Icons'
 
 interface ProjectSwitcherProps {
+  variant?: 'sidebar' | 'header'
   collapsed?: boolean
 }
 
-export default function ProjectSwitcher({ collapsed = false }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ variant = 'sidebar', collapsed = false }: ProjectSwitcherProps) {
   const switchProject = useProjectSwitch()
   const [open, setOpen] = useState(false)
   const [, setRevision] = useState(0)
@@ -43,7 +44,11 @@ export default function ProjectSwitcher({ collapsed = false }: ProjectSwitcherPr
 
   const dropdown = open && (
     <div className={`absolute z-50 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden ${
-      collapsed ? 'left-full top-0 ml-2 w-52' : 'left-2.5 right-2.5 top-full mt-1'
+      variant === 'header'
+        ? 'left-0 top-full mt-1 w-64'
+        : collapsed
+          ? 'left-full top-0 ml-2 w-52'
+          : 'left-2.5 right-2.5 top-full mt-1'
     }`}>
       <div className="max-h-52 overflow-y-auto py-1">
         {projects.length === 0 ? (
@@ -82,6 +87,23 @@ export default function ProjectSwitcher({ collapsed = false }: ProjectSwitcherPr
       </div>
     </div>
   )
+
+  if (variant === 'header') {
+    return (
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 rounded-lg py-1.5 px-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors text-left max-w-[200px]"
+        >
+          <IconFolder size={15} className="text-brand-600 shrink-0" />
+          <span className="text-sm font-medium text-slate-800 truncate">{currentName}</span>
+          <IconChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {dropdown}
+      </div>
+    )
+  }
 
   if (collapsed) {
     return (

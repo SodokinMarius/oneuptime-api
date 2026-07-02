@@ -1,16 +1,60 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi } from '@/api/users'
+import { usersApi, type TenantUser } from '@/api/users'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageShell } from '@/components/ui/PageShell'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { ListPageLayout } from '@/components/layout/ListPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { IconPlus, IconUsers } from '@/components/ui/Icons'
 import { formatDate } from '@/utils/format'
 
+type UserView = 'all' | 'active' | 'pending' | 'disabled'
+
+const VIEW_CONFIG: Record<UserView, { title: string; subtitle: string; breadcrumb: string; emptyTitle: string; emptyDescription: string }> = {
+  all: {
+    title: 'Users',
+    subtitle: 'Here is a list of members for this organization.',
+    breadcrumb: 'All members',
+    emptyTitle: 'No users found',
+    emptyDescription: 'Invite teammates to join your organization.',
+  },
+  active: {
+    title: 'Active users',
+    subtitle: 'Members with active accounts.',
+    breadcrumb: 'Active',
+    emptyTitle: 'No active users',
+    emptyDescription: 'No active members found.',
+  },
+  pending: {
+    title: 'Pending invites',
+    subtitle: 'Users who have not verified their email yet.',
+    breadcrumb: 'Pending invite',
+    emptyTitle: 'No pending invites',
+    emptyDescription: 'All users have verified their email.',
+  },
+  disabled: {
+    title: 'Disabled users',
+    subtitle: 'Deactivated member accounts.',
+    breadcrumb: 'Disabled',
+    emptyTitle: 'No disabled users',
+    emptyDescription: 'No members are currently disabled.',
+  },
+}
+
+function filterByView(users: TenantUser[], view: UserView): TenantUser[] {
+  if (view === 'active') return users.filter(u => u.is_active && u.is_email_verified)
+  if (view === 'pending') return users.filter(u => !u.is_email_verified)
+  if (view === 'disabled') return users.filter(u => !u.is_active)
+  return users
+}
+
 export default function UsersPage() {
+  const [searchParams] = useSearchParams()
+  const view = (searchParams.get('view') || 'all') as UserView
+  const config = VIEW_CONFIG[view] ?? VIEW_CONFIG.all
+
   const [search, setSearch] = useState('')
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -19,8 +63,8 @@ export default function UsersPage() {
   const [inviteWarning, setInviteWarning] = useState('')
   const qc = useQueryClient()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['users', search],
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['users', search, view],
     queryFn: () => usersApi.list({ search: search || undefined }).then(r => r.data),
   })
 
@@ -46,7 +90,7 @@ export default function UsersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   })
 
-  const users = data?.results ?? []
+  const users = filterByView(data?.results ?? [], view)
 
   const handleCloseInvite = () => {
     setShowInvite(false)
@@ -57,18 +101,21 @@ export default function UsersPage() {
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Users"
-        subtitle="Active members of your organization"
-        actions={
-          <Button onClick={() => setShowInvite(true)} fullWidth>
-            <IconPlus size={16} />
-            Invite user
-          </Button>
-        }
-      />
-
+    <ListPageLayout
+      embedded
+      breadcrumbs={[
+        { label: 'Users', to: '/users' },
+        { label: config.breadcrumb },
+      ]}
+      title={config.title}
+      subtitle={config.subtitle}
+      actions={
+        <Button onClick={() => setShowInvite(true)} fullWidth>
+          <IconPlus size={16} />
+          Invite user
+        </Button>
+      }
+    >
       <div className="filter-bar">
         <input
           value={search}
@@ -83,72 +130,81 @@ export default function UsersPage() {
       ) : users.length === 0 ? (
         <EmptyState
           icon={<IconUsers size={24} />}
-          title="No users found"
-          description="Invite teammates to join your organization."
+          title={config.emptyTitle}
+          description={config.emptyDescription}
           action={
-            <Button onClick={() => setShowInvite(true)}>
-              <IconPlus size={16} />
-              Invite
-            </Button>
+            view === 'all' ? (
+              <Button onClick={() => setShowInvite(true)}>
+                <IconPlus size={16} />
+                Invite
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => refetch()}>Refresh</Button>
+            )
           }
         />
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <th className="table-th">User</th>
-                  <th className="table-th hidden sm:table-cell">Email</th>
-                  <th className="table-th">Status</th>
-                  <th className="table-th hidden md:table-cell">Member since</th>
-                  <th className="table-th text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {users.map(user => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="table-td">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium text-sm shrink-0">
-                          {(user.first_name?.[0] || user.email[0]).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="font-medium text-gray-800 block truncate">{user.full_name || '—'}</span>
-                          <span className="text-xs text-gray-400 sm:hidden truncate block">{user.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="table-td text-gray-500 hidden sm:table-cell">{user.email}</td>
-                    <td className="table-td">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${user.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                        <span className={`text-xs font-medium ${user.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                          {user.is_active ? 'Active' : 'Disabled'}
-                        </span>
-                        {!user.is_email_verified && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Pending</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="table-td text-gray-500 hidden md:table-cell">{formatDate(user.created_at)}</td>
-                    <td className="table-td text-right">
-                      {user.is_active && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => { if (confirm(`Deactivate ${user.email}?`)) deactivateMutation.mutate(user.id) }}
-                        >
-                          Deactivate
-                        </Button>
-                      )}
-                    </td>
+        <>
+          <div className="table-wrap">
+            <div className="table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="table-th">User</th>
+                    <th className="table-th hidden sm:table-cell">Email</th>
+                    <th className="table-th">Status</th>
+                    <th className="table-th hidden md:table-cell">Member since</th>
+                    <th className="table-th text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {users.map(user => (
+                    <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="table-td">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium text-sm shrink-0">
+                            {(user.first_name?.[0] || user.email[0]).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-medium text-gray-800 block truncate">{user.full_name || '—'}</span>
+                            <span className="text-xs text-gray-400 sm:hidden truncate block">{user.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="table-td text-gray-500 hidden sm:table-cell">{user.email}</td>
+                      <td className="table-td">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${user.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                          <span className={`text-xs font-medium ${user.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
+                            {user.is_active ? 'Active' : 'Disabled'}
+                          </span>
+                          {!user.is_email_verified && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Pending</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="table-td text-gray-500 hidden md:table-cell">{formatDate(user.created_at)}</td>
+                      <td className="table-td text-right">
+                        {user.is_active && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => { if (confirm(`Deactivate ${user.email}?`)) deactivateMutation.mutate(user.id) }}
+                          >
+                            Deactivate
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+          <p className="text-sm text-gray-500 mt-4">
+            {users.length} user{users.length !== 1 ? 's' : ''} shown.
+          </p>
+        </>
       )}
 
       <Modal open={showInvite} onClose={handleCloseInvite} title="Invite user" size="sm">
@@ -190,6 +246,6 @@ export default function UsersPage() {
           </div>
         )}
       </Modal>
-    </PageShell>
+    </ListPageLayout>
   )
 }

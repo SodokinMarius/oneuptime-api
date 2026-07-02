@@ -1,11 +1,10 @@
 import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { webhooksApi } from '@/api/webhooks'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageShell } from '@/components/ui/PageShell'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { ListPageLayout } from '@/components/layout/ListPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { IconBell, IconPlus } from '@/components/ui/Icons'
@@ -15,6 +14,39 @@ import { TeamFilter } from '@/components/ui/TeamFilter'
 import { TeamSelect } from '@/components/ui/TeamSelect'
 import { teamIdPayload, withTeamFilter } from '@/utils/teamParams'
 import { formatRelative } from '@/utils/format'
+import type { Webhook } from '@/types'
+
+type WebhookView = 'all' | 'active' | 'inactive'
+
+const VIEW_CONFIG: Record<WebhookView, { title: string; subtitle: string; breadcrumb: string; emptyTitle: string; emptyDescription: string }> = {
+  all: {
+    title: 'Webhooks',
+    subtitle: 'Here is a list of webhooks for this project.',
+    breadcrumb: 'All webhooks',
+    emptyTitle: 'No webhooks',
+    emptyDescription: 'Create a webhook to receive real-time notifications.',
+  },
+  active: {
+    title: 'Active webhooks',
+    subtitle: 'Webhooks currently delivering events.',
+    breadcrumb: 'Active',
+    emptyTitle: 'No active webhooks',
+    emptyDescription: 'No webhooks are currently active.',
+  },
+  inactive: {
+    title: 'Inactive webhooks',
+    subtitle: 'Webhooks that are paused or disabled.',
+    breadcrumb: 'Inactive',
+    emptyTitle: 'No inactive webhooks',
+    emptyDescription: 'All webhooks are active.',
+  },
+}
+
+function filterByView(webhooks: Webhook[], view: WebhookView): Webhook[] {
+  if (view === 'active') return webhooks.filter(w => w.is_active)
+  if (view === 'inactive') return webhooks.filter(w => !w.is_active)
+  return webhooks
+}
 
 const ALL_EVENTS = [
   'incident.created', 'incident.acknowledged', 'incident.resolved', 'incident.assigned',
@@ -28,6 +60,7 @@ const PAYLOAD_FORMATS = [
   { value: 'json', label: 'JSON (default)' },
   { value: 'slack', label: 'Slack Incoming Webhook' },
   { value: 'teams', label: 'Microsoft Teams Connector' },
+  { value: 'discord', label: 'Discord Webhook' },
 ] as const
 
 function WebhookForm({ onClose }: { onClose: () => void }) {
@@ -37,7 +70,7 @@ function WebhookForm({ onClose }: { onClose: () => void }) {
     name: '',
     url: '',
     secret: '',
-    payload_format: 'json' as 'json' | 'slack' | 'teams',
+    payload_format: 'json' as 'json' | 'slack' | 'teams' | 'discord',
     event_types: [] as string[],
   })
   const [error, setError] = useState('')
@@ -123,13 +156,20 @@ function WebhookForm({ onClose }: { onClose: () => void }) {
 }
 
 export default function WebhooksPage() {
+  const [searchParams] = useSearchParams()
+  const view = (searchParams.get('view') || 'all') as WebhookView
+  const config = VIEW_CONFIG[view] ?? VIEW_CONFIG.all
+
   const [showCreate, setShowCreate] = useState(false)
   const [teamFilter, setTeamFilter] = useState('')
   const qc = useQueryClient()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['webhooks', teamFilter],
-    queryFn: () => webhooksApi.list(withTeamFilter({}, teamFilter)).then(r => r.data),
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['webhooks', teamFilter, view],
+    queryFn: () => webhooksApi.list(withTeamFilter({
+      ...(view === 'active' ? { active: 'true' } : {}),
+      ...(view === 'inactive' ? { active: 'false' } : {}),
+    }, teamFilter)).then(r => r.data),
   })
 
   const deleteMutation = useMutation({
@@ -137,20 +177,24 @@ export default function WebhooksPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['webhooks'] }),
   })
 
-  const webhooks = data?.results ?? []
+  const webhooks = filterByView(data?.results ?? [], view)
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Webhooks"
-        subtitle="Outgoing HMAC-SHA256 signed notifications"
-        actions={
-          <Button onClick={() => setShowCreate(true)} fullWidth>
-            <IconPlus size={16} />
-            New webhook
-          </Button>
-        }
-      />
+    <ListPageLayout
+      embedded
+      breadcrumbs={[
+        { label: 'Webhooks', to: '/webhooks' },
+        { label: config.breadcrumb },
+      ]}
+      title={config.title}
+      subtitle={config.subtitle}
+      actions={
+        <Button onClick={() => setShowCreate(true)} fullWidth>
+          <IconPlus size={16} />
+          New webhook
+        </Button>
+      }
+    >
 
       <div className="filter-bar">
         <TeamFilter value={teamFilter} onChange={setTeamFilter} />
@@ -161,16 +205,21 @@ export default function WebhooksPage() {
       ) : webhooks.length === 0 ? (
         <EmptyState
           icon={<IconBell size={24} />}
-          title="No webhooks"
-          description="Create a webhook to receive real-time notifications."
+          title={config.emptyTitle}
+          description={config.emptyDescription}
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <IconPlus size={16} />
-              New webhook
-            </Button>
+            view === 'all' ? (
+              <Button onClick={() => setShowCreate(true)}>
+                <IconPlus size={16} />
+                New webhook
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => refetch()}>Refresh</Button>
+            )
           }
         />
       ) : (
+        <>
         <div className="card-list">
           {webhooks.map(wh => (
             <div key={wh.id} className="card-item flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -205,11 +254,15 @@ export default function WebhooksPage() {
             </div>
           ))}
         </div>
+        <p className="text-sm text-gray-500 mt-4">
+          {webhooks.length} webhook{webhooks.length !== 1 ? 's' : ''} shown.
+        </p>
+        </>
       )}
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New webhook" size="lg">
         <WebhookForm onClose={() => setShowCreate(false)} />
       </Modal>
-    </PageShell>
+    </ListPageLayout>
   )
 }
