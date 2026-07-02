@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
+/* OneUptime-inspired palette — indigo primary, clean neutrals */
 @theme {
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
-  --color-brand-950: #2e1065;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
@@ -28,25 +29,28 @@
   }
 
   ::selection {
-    background-color: #ddd6fe;
-    color: #4c1d95;
+    background-color: #c7d2fe;
+    color: #312e81;
   }
 
   body {
-    @apply text-gray-900;
+    @apply text-gray-900 bg-slate-50;
   }
 }
 
 @layer utilities {
-  /* ── Sidebar ── */
+  /* ── Sidebar (light, OneUptime-style) ── */
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150;
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150;
   }
   .sidebar-item-active {
-    @apply bg-brand-600 text-white shadow-sm;
+    @apply bg-brand-50 text-brand-700 font-semibold;
   }
   .sidebar-item-inactive {
-    @apply text-slate-400 hover:bg-white/5 hover:text-white;
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .sidebar-section-label {
+    @apply px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400;
   }
 
   /* ── Buttons ── */
@@ -133,15 +137,19 @@
 
   /* ── Cards & lists ── */
   .card {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm;
+    @apply bg-white rounded-xl border border-gray-200/80 shadow-sm;
   }
 
   .card-item {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5 hover:shadow-md transition-all duration-200;
+    @apply bg-white rounded-xl border border-gray-200/80 shadow-sm p-4 sm:p-5 hover:shadow-md transition-all duration-200;
   }
 
   .card-list {
     @apply space-y-3;
+  }
+
+  .feature-card {
+    @apply bg-white rounded-xl border border-gray-200/80 p-5 hover:border-brand-200 hover:shadow-md transition-all duration-200;
   }
 
   /* ── Forms ── */
@@ -163,7 +171,7 @@
 
   /* ── Tables ── */
   .table-wrap {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden;
+    @apply bg-white rounded-xl border border-gray-200/80 shadow-sm overflow-hidden;
   }
 
   .table-scroll {

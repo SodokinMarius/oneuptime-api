@@ -25,7 +25,7 @@ export default function SSOCallbackPage() {
     const projectId = params.get('project_id')
 
     if (!access || !refresh) {
-      setError('Réponse SSO incomplète. Réessayez depuis la page de connexion.')
+      setError('Incomplete SSO response. Try again from the sign-in page.')
       return
     }
 
@@ -52,7 +52,7 @@ export default function SSOCallbackPage() {
         navigate('/dashboard', { replace: true })
       } catch {
         authStore.clear()
-        setError('Impossible de finaliser la connexion SSO. Contactez votre administrateur.')
+        setError('Unable to complete SSO sign-in. Contact your administrator.')
       }
     }
 
@@ -76,13 +76,13 @@ export default function SSOCallbackPage() {
               onClick={() => navigate('/login', { replace: true })}
               className="text-brand-400 hover:text-brand-300 text-sm font-medium"
             >
-              Retour à la connexion
+              Back to sign in
             </button>
           </div>
         ) : (
           <>
             <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-300 text-sm">Finalisation de la connexion SSO…</p>
+            <p className="text-slate-300 text-sm">Completing SSO sign-in…</p>
           </>
         )}
       </div>

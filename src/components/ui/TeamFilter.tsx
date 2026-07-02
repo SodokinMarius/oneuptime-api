@@ -20,9 +20,9 @@ export function TeamFilter({ value, onChange, className = '' }: Props) {
       value={value}
       onChange={e => onChange(e.target.value)}
       className={`input-field w-full sm:w-auto sm:min-w-[180px] ${className}`}
-      aria-label="Filtrer par équipe"
+      aria-label="Filter by team"
     >
-      <option value="">Toutes les équipes</option>
+      <option value="">All teams</option>
       {teams.map(t => (
         <option key={t.id} value={t.id}>{t.name}</option>
       ))}

@@ -15,6 +15,7 @@ import MaintenancePage from '@/pages/maintenance/MaintenancePage'
 import StatusPagesPage from '@/pages/status-pages/StatusPagesPage'
 import StatusPageDetailPage from '@/pages/status-pages/StatusPageDetailPage'
 import PublicStatusPage from '@/pages/status-pages/PublicStatusPage'
+import SubscriberVerifyPage from '@/pages/status-pages/SubscriberVerifyPage'
 import WebhooksPage from '@/pages/webhooks/WebhooksPage'
 import WebhookDetailPage from '@/pages/webhooks/WebhookDetailPage'
 import AuditPage from '@/pages/audit/AuditPage'
@@ -35,6 +36,8 @@ export const router = createBrowserRouter([
   { path: '/activate',     element: <RedirectIfAuth><ActivatePage /></RedirectIfAuth> },
   { path: '/accept-invite', element: <RedirectIfAuth><AcceptInvitePage /></RedirectIfAuth> },
   { path: '/sso/callback', element: <SSOCallbackPage /> },
+  { path: '/status/:slug/verify-email', element: <SubscriberVerifyPage type="email" /> },
+  { path: '/status/:slug/verify-phone', element: <SubscriberVerifyPage type="phone" /> },
   { path: '/status/:slug', element: <PublicStatusPage /> },
   {
     path: '/',

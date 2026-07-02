@@ -55,7 +55,7 @@ export default function IncidentsPage() {
         actions={
           <Button variant="accent" onClick={() => setShowCreate(true)} fullWidth>
             <IconPlus size={16} />
-            Déclarer un incident
+            Declare incident
           </Button>
         }
       />
@@ -66,19 +66,19 @@ export default function IncidentsPage() {
           onChange={e => setStateFilter(e.target.value)}
           className="input-field w-full sm:w-auto sm:min-w-[180px]"
         >
-          <option value="">Tous les états</option>
+          <option value="">All states</option>
           {states?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
         <TeamFilter value={teamFilter} onChange={setTeamFilter} />
       </div>
 
       {isLoading ? (
-        <Spinner label="Chargement…" />
+        <Spinner label="Loading…" />
       ) : incidents.length === 0 ? (
         <EmptyState
           icon={<IconCheckCircle size={24} />}
-          title="Aucun incident"
-          description="Tout est opérationnel !"
+          title="No incidents"
+          description="Everything is operational!"
         />
       ) : (
         <div className="card-list">
@@ -111,7 +111,7 @@ export default function IncidentsPage() {
                         onClick={() => ackMut.mutate(inc.id)}
                         disabled={ackMut.isPending}
                       >
-                        Accuser réception
+                        Acknowledge
                       </Button>
                       <Button
                         variant="success"
@@ -119,12 +119,12 @@ export default function IncidentsPage() {
                         onClick={() => resolveMut.mutate(inc.id)}
                         disabled={resolveMut.isPending}
                       >
-                        Résoudre
+                        Resolve
                       </Button>
                     </>
                   )}
                   <Link to={`/incidents/${inc.id}`} className="btn-secondary btn-sm">
-                    Voir →
+                    View →
                   </Link>
                 </div>
               </div>
@@ -133,7 +133,7 @@ export default function IncidentsPage() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Déclarer un incident" size="md">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Declare incident" size="md">
         <IncidentForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['incidents'] }) }} />
       </Modal>
     </PageShell>

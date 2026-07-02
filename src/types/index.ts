@@ -7,8 +7,26 @@ export interface TeamScoped {
 
 // ─── Monitor ─────────────────────────────────────────────────────────────────
 
-export type MonitorType = 'api' | 'website' | 'tcp' | 'heartbeat' | 'ping'
+export type MonitorType =
+  | 'api' | 'website' | 'tcp' | 'heartbeat' | 'ping'
+  | 'dns' | 'udp' | 'ssl' | 'multi_step_api' | 'journey'
+
 export type MonitorStatus = 'operational' | 'degraded' | 'offline' | 'disabled'
+
+export interface MonitorStepAssert {
+  status?: number
+  body_contains?: string
+}
+
+export interface MonitorStep {
+  name?: string
+  url: string
+  method?: string
+  headers?: Record<string, string>
+  body?: string
+  assert?: MonitorStepAssert
+  extract?: Record<string, string>
+}
 
 export interface Monitor extends TeamScoped {
   id: string
@@ -23,6 +41,8 @@ export interface Monitor extends TeamScoped {
   status: MonitorStatus
   tags: string[]
   alert_on_failure: boolean
+  criteria?: Record<string, unknown>
+  steps?: MonitorStep[]
   last_check_at: string | null
   next_check_at: string | null
   current_incident: string | null
@@ -64,6 +84,14 @@ export interface MonitorGroup extends TeamScoped {
 
 export type IncidentSeverity = 'critical' | 'high' | 'medium' | 'low'
 
+export interface IncidentEscalationState {
+  policy: string
+  policy_name: string
+  current_step_order: number
+  last_escalated_at: string | null
+  completed: boolean
+}
+
 export interface Incident extends TeamScoped {
   id: string
   title: string
@@ -76,6 +104,7 @@ export interface Incident extends TeamScoped {
   monitor: string | null
   assigned_to: string | null
   is_visible_on_status_page: boolean
+  escalation_state?: IncidentEscalationState | null
   triggered_at: string
   acknowledged_at: string | null
   resolved_at: string | null
@@ -114,6 +143,7 @@ export interface IncidentSeverityObj {
 // ─── Maintenance ─────────────────────────────────────────────────────────────
 
 export type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly'
 
 export interface Maintenance extends TeamScoped {
   id: string
@@ -125,6 +155,11 @@ export interface Maintenance extends TeamScoped {
   monitors: string[]
   is_visible_on_status_page: boolean
   notify_subscribers: boolean
+  recurrence_frequency: RecurrenceFrequency
+  recurrence_interval: number
+  recurrence_weekdays: number[]
+  recurrence_until: string | null
+  series_id: string | null
   created_at: string
   updated_at: string
 }
@@ -148,15 +183,66 @@ export interface StatusPage extends TeamScoped {
 
 // ─── Webhooks ─────────────────────────────────────────────────────────────────
 
+export type WebhookPayloadFormat = 'json' | 'slack' | 'teams'
+
 export interface Webhook extends TeamScoped {
   id: string
   name: string
   url: string
+  payload_format: WebhookPayloadFormat
   event_types: string[]
   is_active: boolean
   secret: string
   timeout_seconds: number
   max_retries: number
+  created_at: string
+  updated_at: string
+}
+
+// ─── Incident automation ───────────────────────────────────────────────────────
+
+export type EscalationAction =
+  | 'notify_webhook'
+  | 'notify_user'
+  | 'increase_severity'
+  | 'assign_user'
+
+export interface EscalationStep {
+  id: string
+  order: number
+  delay_minutes: number
+  action: EscalationAction
+  webhook: string | null
+  user: string | null
+  target_severity: string | null
+  created_at: string
+}
+
+export interface EscalationPolicy extends TeamScoped {
+  id: string
+  name: string
+  description: string
+  is_default: boolean
+  is_active: boolean
+  severity_names: string[]
+  steps: EscalationStep[]
+  step_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type IncidentWorkflowTrigger =
+  | 'incident_created'
+  | 'incident_unacknowledged'
+  | 'incident_resolved'
+
+export interface IncidentWorkflowRule {
+  id: string
+  name: string
+  trigger: IncidentWorkflowTrigger
+  conditions: Record<string, unknown>
+  actions: Record<string, unknown>[]
+  is_active: boolean
   created_at: string
   updated_at: string
 }

@@ -28,44 +28,44 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['resource-policies'] }); onClose() },
     onError: (err: any) => {
-      setError(err.response?.data?.errors?.[0]?.message || 'Erreur lors de la création.')
+      setError(err.response?.data?.errors?.[0]?.message || 'Error creating policy.')
     },
   })
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="label">Rôle</label>
+        <label className="label">Role</label>
         <select value={form.role_id} onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}
           className="input-field">
-          <option value="">Sélectionner un rôle...</option>
+          <option value="">Select a role...</option>
           {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
         {rolesError && (
-          <p className="text-xs text-red-600 mt-1">Impossible de charger les rôles. Vérifiez vos permissions.</p>
+          <p className="text-xs text-red-600 mt-1">Unable to load roles. Check your permissions.</p>
         )}
         {!rolesError && roles.length === 0 && (
-          <p className="text-xs text-amber-600 mt-1">Aucun rôle disponible. Créez un rôle dans l'onglet « Rôles ».</p>
+          <p className="text-xs text-amber-600 mt-1">No roles available. Create a role in the Roles tab.</p>
         )}
       </div>
       <div>
-        <label className="label">Type de ressource</label>
+        <label className="label">Resource type</label>
         <select value={form.resource_type} onChange={e => setForm(f => ({ ...f, resource_type: e.target.value }))}
           className="input-field">
-          <option value="">Sélectionner un type...</option>
+          <option value="">Select a type...</option>
           {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
       <div>
         <label className="label">
-          ID de ressource <span className="text-gray-400 font-normal">(vide = toutes les ressources)</span>
+          Resource ID <span className="text-gray-400 font-normal">(empty = all resources)</span>
         </label>
         <input value={form.resource_id} onChange={e => setForm(f => ({ ...f, resource_id: e.target.value }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-          placeholder="UUID optionnel" />
+          placeholder="Optional UUID" />
       </div>
       <div>
-        <label className="label">Effet</label>
+        <label className="label">Effect</label>
         <div className="flex gap-3">
           {(['allow', 'deny'] as const).map(e => (
             <label key={e} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
@@ -73,17 +73,17 @@ function PolicyForm({ onClose }: { onClose: () => void }) {
             }`}>
               <input type="radio" name="effect" value={e} checked={form.effect === e} onChange={() => setForm(f => ({ ...f, effect: e }))} className="sr-only" />
               <span className={`w-2 h-2 rounded-full ${form.effect === e ? e === 'allow' ? 'bg-emerald-500' : 'bg-red-500' : 'bg-gray-300'}`} />
-              <span className="text-sm font-medium capitalize">{e === 'allow' ? '✅ Autoriser' : '🚫 Refuser'}</span>
+              <span className="text-sm font-medium capitalize">{e === 'allow' ? '✅ Allow' : '🚫 Deny'}</span>
             </label>
           ))}
         </div>
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="flex justify-end gap-2 pt-2">
-        <button onClick={onClose} className="btn-ghost">Annuler</button>
+        <button onClick={onClose} className="btn-ghost">Cancel</button>
         <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.role_id || !form.resource_type}
           className="px-4 py-2 btn-primary disabled:opacity-50">
-          {mutation.isPending ? 'Création...' : 'Créer la politique'}
+          {mutation.isPending ? 'Creating...' : 'Create policy'}
         </button>
       </div>
     </div>
@@ -110,12 +110,12 @@ export default function ResourcePoliciesTab() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Politiques de ressources</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Règles allow/deny sur des ressources spécifiques</p>
+          <h3 className="text-base font-semibold text-gray-900">Resource policies</h3>
+          <p className="text-sm text-gray-500 mt-0.5">Allow/deny rules on specific resources</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
-          + Nouvelle politique
+          + New policy
         </button>
       </div>
 
@@ -124,8 +124,8 @@ export default function ResourcePoliciesTab() {
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : policies.length === 0 ? (
-        <EmptyState icon={<IconShieldCheck size={24} />} title="Aucune politique définie"
-          description="Les politiques de ressources permettent d'affiner les permissions au niveau d'objets spécifiques." />
+        <EmptyState icon={<IconShieldCheck size={24} />} title="No policies defined"
+          description="Resource policies let you fine-tune permissions at the object level." />
       ) : (
         <div className="space-y-2">
           {policies.map(policy => (
@@ -141,14 +141,14 @@ export default function ResourcePoliciesTab() {
                   {policy.resource_id && (
                     <span className="text-xs text-gray-400 font-mono ml-1">#{policy.resource_id.slice(0, 8)}</span>
                   )}
-                  {!policy.resource_id && <span className="text-xs text-gray-400 ml-1">(toutes)</span>}
+                  {!policy.resource_id && <span className="text-xs text-gray-400 ml-1">(all)</span>}
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-xs text-gray-400">{formatDate(policy.created_at)}</span>
-                <button onClick={() => { if (confirm('Supprimer cette politique ?')) deleteMutation.mutate(policy.id) }}
+                <button onClick={() => { if (confirm('Delete this policy?')) deleteMutation.mutate(policy.id) }}
                   className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors">
-                  Supprimer
+                  Delete
                 </button>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function ResourcePoliciesTab() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouvelle politique de ressource">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New resource policy">
         <PolicyForm onClose={() => setShowCreate(false)} />
       </Modal>
     </div>

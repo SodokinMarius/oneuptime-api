@@ -45,7 +45,7 @@ function ProjectRow({ project }: { project: Project }) {
     },
     onError: (err: any) => {
       const d = err.response?.data
-      setError(d?.detail || d?.errors?.[0]?.message || d?.slug?.[0] || 'Erreur')
+      setError(d?.detail || d?.errors?.[0]?.message || d?.slug?.[0] || 'Error')
     },
   })
 
@@ -66,12 +66,12 @@ function ProjectRow({ project }: { project: Project }) {
             <h4 className="font-medium text-gray-900">{project.name}</h4>
             {isCurrent && (
               <span className="text-[10px] uppercase tracking-wide bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">
-                Actif
+                Active
               </span>
             )}
             {!project.is_active && (
               <span className="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                Inactif
+                Inactive
               </span>
             )}
           </div>
@@ -95,30 +95,30 @@ function ProjectRow({ project }: { project: Project }) {
             onClick={() => { setForm({ name: project.name, slug: project.slug, description: project.description }); setEditing(true) }}
             className="text-xs border border-gray-200 text-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Modifier
+            Edit
           </button>
           {project.is_active && (
             <button
               type="button"
               onClick={() => {
-                if (confirm(`Désactiver le projet « ${project.name} » ?`)) {
+                if (confirm(`Deactivate project "${project.name}"?`)) {
                   deactivateMut.mutate()
                 }
               }}
               disabled={isCurrent || deactivateMut.isPending}
-              title={isCurrent ? 'Impossible de désactiver le projet actif' : undefined}
+              title={isCurrent ? 'Cannot deactivate the active project' : undefined}
               className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Désactiver
+              Deactivate
             </button>
           )}
         </div>
       </div>
 
-      <Modal open={editing} onClose={() => setEditing(false)} title={`Modifier — ${project.name}`} size="sm">
+      <Modal open={editing} onClose={() => setEditing(false)} title={`Edit — ${project.name}`} size="sm">
         <form onSubmit={e => { e.preventDefault(); setError(''); updateMut.mutate() }} className="space-y-4">
           <div>
-            <label className="label">Nom *</label>
+            <label className="label">Name *</label>
             <input
               required
               value={form.name}
@@ -147,7 +147,7 @@ function ProjectRow({ project }: { project: Project }) {
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
           <div className="flex justify-end">
             <button type="submit" disabled={updateMut.isPending} className="btn-primary disabled:opacity-50">
-              {updateMut.isPending ? 'Enregistrement...' : 'Enregistrer'}
+              {updateMut.isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>
@@ -185,7 +185,7 @@ export default function ProjectsTab() {
     },
     onError: (err: any) => {
       const d = err.response?.data
-      setCreateError(d?.detail || d?.errors?.[0]?.message || d?.slug?.[0] || 'Erreur')
+      setCreateError(d?.detail || d?.errors?.[0]?.message || d?.slug?.[0] || 'Error')
     },
   })
 
@@ -201,9 +201,9 @@ export default function ProjectsTab() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <p className="text-sm text-gray-500">{projects?.length ?? 0} projet(s)</p>
+          <p className="text-sm text-gray-500">{projects?.length ?? 0} project(s)</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            Chaque projet isole monitors, incidents, équipes et webhooks.
+            Each project isolates monitors, incidents, teams, and webhooks.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -214,10 +214,10 @@ export default function ProjectsTab() {
               onChange={e => setShowInactive(e.target.checked)}
               className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
-            Afficher inactifs
+            Show inactive
           </label>
           <button type="button" onClick={() => setShowCreate(true)} className="btn-primary">
-            + Nouveau projet
+            + New project
           </button>
         </div>
       </div>
@@ -225,8 +225,8 @@ export default function ProjectsTab() {
       {!projects?.length ? (
         <EmptyState
           icon={<IconFolder size={24} />}
-          title="Aucun projet"
-          description="Créez un projet pour organiser votre monitoring."
+          title="No projects"
+          description="Create a project to organize your monitoring."
         />
       ) : (
         <div className="space-y-3">
@@ -234,7 +234,7 @@ export default function ProjectsTab() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau projet" size="sm">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New project" size="sm">
         <form
           onSubmit={e => {
             e.preventDefault()
@@ -244,7 +244,7 @@ export default function ProjectsTab() {
           className="space-y-4"
         >
           <div>
-            <label className="label">Nom *</label>
+            <label className="label">Name *</label>
             <input
               required
               value={form.name}
@@ -277,7 +277,7 @@ export default function ProjectsTab() {
               onChange={e => setForm({ ...form, description: e.target.value })}
               className="input-field min-h-[72px]"
               rows={2}
-              placeholder="Environnement de production client X"
+              placeholder="Client X production environment"
             />
           </div>
           {createError && (
@@ -285,7 +285,7 @@ export default function ProjectsTab() {
           )}
           <div className="flex justify-end">
             <button type="submit" disabled={createMut.isPending || !form.name || !form.slug} className="btn-primary disabled:opacity-50">
-              {createMut.isPending ? 'Création...' : 'Créer et basculer'}
+              {createMut.isPending ? 'Creating...' : 'Create and switch'}
             </button>
           </div>
         </form>

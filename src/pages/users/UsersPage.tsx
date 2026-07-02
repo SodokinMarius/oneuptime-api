@@ -36,7 +36,7 @@ export default function UsersPage() {
       setInviteEmail('')
     },
     onError: (err: any) => {
-      const msg = err.response?.data?.errors?.[0]?.message || err.response?.data?.detail || 'Erreur lors de l\'invitation.'
+      const msg = err.response?.data?.errors?.[0]?.message || err.response?.data?.detail || 'Error sending invitation.'
       setInviteError(msg)
     },
   })
@@ -59,12 +59,12 @@ export default function UsersPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Utilisateurs"
-        subtitle="Membres actifs de votre organisation"
+        title="Users"
+        subtitle="Active members of your organization"
         actions={
           <Button onClick={() => setShowInvite(true)} fullWidth>
             <IconPlus size={16} />
-            Inviter un utilisateur
+            Invite user
           </Button>
         }
       />
@@ -73,22 +73,22 @@ export default function UsersPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher par nom ou email…"
+          placeholder="Search by name or email…"
           className="input-field w-full sm:max-w-sm"
         />
       </div>
 
       {isLoading ? (
-        <Spinner label="Chargement…" />
+        <Spinner label="Loading…" />
       ) : users.length === 0 ? (
         <EmptyState
           icon={<IconUsers size={24} />}
-          title="Aucun utilisateur trouvé"
-          description="Invitez des collaborateurs à rejoindre votre organisation."
+          title="No users found"
+          description="Invite teammates to join your organization."
           action={
             <Button onClick={() => setShowInvite(true)}>
               <IconPlus size={16} />
-              Inviter
+              Invite
             </Button>
           }
         />
@@ -98,10 +98,10 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <th className="table-th">Utilisateur</th>
+                  <th className="table-th">User</th>
                   <th className="table-th hidden sm:table-cell">Email</th>
-                  <th className="table-th">Statut</th>
-                  <th className="table-th hidden md:table-cell">Membre depuis</th>
+                  <th className="table-th">Status</th>
+                  <th className="table-th hidden md:table-cell">Member since</th>
                   <th className="table-th text-right">Actions</th>
                 </tr>
               </thead>
@@ -124,10 +124,10 @@ export default function UsersPage() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${user.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                         <span className={`text-xs font-medium ${user.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                          {user.is_active ? 'Actif' : 'Désactivé'}
+                          {user.is_active ? 'Active' : 'Disabled'}
                         </span>
                         {!user.is_email_verified && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">En attente</span>
+                          <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Pending</span>
                         )}
                       </div>
                     </td>
@@ -137,9 +137,9 @@ export default function UsersPage() {
                         <Button
                           variant="danger"
                           size="sm"
-                          onClick={() => { if (confirm(`Désactiver ${user.email} ?`)) deactivateMutation.mutate(user.id) }}
+                          onClick={() => { if (confirm(`Deactivate ${user.email}?`)) deactivateMutation.mutate(user.id) }}
                         >
-                          Désactiver
+                          Deactivate
                         </Button>
                       )}
                     </td>
@@ -151,40 +151,40 @@ export default function UsersPage() {
         </div>
       )}
 
-      <Modal open={showInvite} onClose={handleCloseInvite} title="Inviter un utilisateur" size="sm">
+      <Modal open={showInvite} onClose={handleCloseInvite} title="Invite user" size="sm">
         {inviteSuccess ? (
           <div className="text-center py-4">
             <p className="text-4xl mb-3">✉️</p>
             <p className="text-sm font-medium text-gray-800 mb-1">
-              {inviteWarning ? 'Invitation créée' : 'Invitation envoyée !'}
+              {inviteWarning ? 'Invitation created' : 'Invitation sent!'}
             </p>
             {inviteWarning ? (
               <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-6">{inviteWarning}</p>
             ) : (
-              <p className="text-sm text-gray-500 mb-6">L'utilisateur recevra un email pour rejoindre votre organisation.</p>
+              <p className="text-sm text-gray-500 mb-6">The user will receive an email to join your organization.</p>
             )}
-            <Button onClick={handleCloseInvite}>Fermer</Button>
+            <Button onClick={handleCloseInvite}>Close</Button>
           </div>
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="label">Adresse email</label>
+              <label className="label">Email address</label>
               <input
                 type="email"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
                 className="input-field"
-                placeholder="collegue@exemple.com"
+                placeholder="colleague@example.com"
               />
             </div>
             {inviteError && <p className="form-error">{inviteError}</p>}
             <div className="form-actions">
-              <Button variant="secondary" onClick={handleCloseInvite}>Annuler</Button>
+              <Button variant="secondary" onClick={handleCloseInvite}>Cancel</Button>
               <Button
                 onClick={() => inviteMutation.mutate()}
                 disabled={inviteMutation.isPending || !inviteEmail}
               >
-                {inviteMutation.isPending ? 'Envoi…' : 'Envoyer l\'invitation'}
+                {inviteMutation.isPending ? 'Sending…' : 'Send invitation'}
               </Button>
             </div>
           </div>

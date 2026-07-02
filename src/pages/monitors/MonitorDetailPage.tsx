@@ -4,16 +4,20 @@ import { monitorsApi } from '@/api/monitors'
 import { StatusDot } from '@/components/ui/StatusDot'
 import { Badge } from '@/components/ui/Badge'
 import { TeamBadge } from '@/components/ui/TeamBadge'
+import { Modal } from '@/components/ui/Modal'
 import { PageShell } from '@/components/ui/PageShell'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { IconChevronLeft } from '@/components/ui/Icons'
 import { formatDate, formatRelative, formatMs, formatUptime } from '@/utils/format'
+import MonitorForm from './MonitorForm'
+import { useState } from 'react'
 
 export default function MonitorDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [showEdit, setShowEdit] = useState(false)
 
   const { data: monitor, isLoading } = useQuery({
     queryKey: ['monitor', id],
@@ -43,14 +47,14 @@ export default function MonitorDetailPage() {
     onSuccess: () => navigate('/monitors'),
   })
 
-  if (isLoading) return <Spinner label="Chargement…" />
+  if (isLoading) return <Spinner label="Loading…" />
   if (!monitor) return null
 
   return (
     <PageShell size="narrow">
       <button onClick={() => navigate('/monitors')} className="back-link">
         <IconChevronLeft size={16} />
-        Retour aux monitors
+        Back to monitors
       </button>
 
       <div className="detail-header">
@@ -60,17 +64,18 @@ export default function MonitorDetailPage() {
             <h2 className="page-header truncate">{monitor.name}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {monitor.is_paused && <Badge label="en pause" />}
+            {monitor.is_paused && <Badge label="paused" />}
             <Badge label={monitor.status} />
             <TeamBadge teamId={monitor.team_id} teamName={monitor.team_name} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => setShowEdit(true)}>Edit</Button>
           <Button variant="secondary" onClick={() => pauseMut.mutate()} disabled={pauseMut.isPending}>
-            {monitor.is_paused ? 'Reprendre' : 'Mettre en pause'}
+            {monitor.is_paused ? 'Resume' : 'Pause'}
           </Button>
-          <Button variant="danger" onClick={() => { if (confirm('Supprimer ce monitor ?')) deleteMut.mutate() }}>
-            Supprimer
+          <Button variant="danger" onClick={() => { if (confirm('Delete this monitor?')) deleteMut.mutate() }}>
+            Delete
           </Button>
         </div>
       </div>
@@ -78,10 +83,10 @@ export default function MonitorDetailPage() {
       {uptime && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {[
-            { label: 'Uptime (30j)', value: formatUptime(uptime.uptime_percent), color: 'text-emerald-600' },
+            { label: 'Uptime (30d)', value: formatUptime(uptime.uptime_percent), color: 'text-emerald-600' },
             { label: 'Total checks', value: uptime.total_checks ?? 0, color: 'text-gray-900' },
-            { label: 'Échecs', value: uptime.failed_checks ?? 0, color: 'text-red-500' },
-            { label: 'Succès', value: uptime.successful_checks ?? 0, color: 'text-emerald-600' },
+            { label: 'Failures', value: uptime.failed_checks ?? 0, color: 'text-red-500' },
+            { label: 'Successes', value: uptime.successful_checks ?? 0, color: 'text-emerald-600' },
           ].map(s => (
             <div key={s.label} className="card p-4 sm:p-5">
               <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
@@ -97,13 +102,14 @@ export default function MonitorDetailPage() {
           <dl className="space-y-3 text-sm">
             {[
               ['Type', monitor.type],
-              ['URL / Cible', monitor.url || '—'],
-              ['Méthode', monitor.method || '—'],
-              ['Intervalle', `${monitor.interval_seconds}s`],
+              ['URL / Target', monitor.url || '—'],
+              ['Method', monitor.method || '—'],
+              ['Interval', `${monitor.interval_seconds}s`],
               ['Timeout', `${monitor.timeout_seconds}s`],
-              ['Tentatives', monitor.retries.toString()],
-              ['Dernier check', formatRelative(monitor.last_check_at)],
-              ['Prochain check', formatRelative(monitor.next_check_at)],
+              ['Retries', monitor.retries.toString()],
+              ['Steps', monitor.steps?.length ? `${monitor.steps.length} step(s)` : '—'],
+              ['Last check', formatRelative(monitor.last_check_at)],
+              ['Next check', formatRelative(monitor.next_check_at)],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-2">
                 <dt className="text-gray-500 shrink-0">{k}</dt>
@@ -111,12 +117,28 @@ export default function MonitorDetailPage() {
               </div>
             ))}
           </dl>
+          {monitor.criteria && Object.keys(monitor.criteria).length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Criteria</p>
+              <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 overflow-x-auto">
+                {JSON.stringify(monitor.criteria, null, 2)}
+              </pre>
+            </div>
+          )}
+          {monitor.steps && monitor.steps.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Steps</p>
+              <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 overflow-x-auto max-h-48">
+                {JSON.stringify(monitor.steps, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-2 card p-4 sm:p-6">
-          <h3 className="section-title mb-4">Derniers checks</h3>
+          <h3 className="section-title mb-4">Recent checks</h3>
           {!logs?.results?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">Aucun check pour le moment.</p>
+            <p className="text-sm text-gray-400 text-center py-8">No checks yet.</p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
               {logs.results.map(log => (
@@ -139,6 +161,17 @@ export default function MonitorDetailPage() {
           )}
         </div>
       </div>
+
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit monitor" size="lg">
+        <MonitorForm
+          monitor={monitor}
+          onSuccess={() => {
+            setShowEdit(false)
+            qc.invalidateQueries({ queryKey: ['monitor', id] })
+            qc.invalidateQueries({ queryKey: ['monitors'] })
+          }}
+        />
+      </Modal>
     </PageShell>
   )
 }

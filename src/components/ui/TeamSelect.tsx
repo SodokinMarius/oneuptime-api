@@ -5,7 +5,7 @@ import { rbacApi } from '@/api/rbac'
 interface Props {
   value: string
   onChange: (value: string) => void
-  /** Show "Partagé" option (team_id=null) — typically for admins */
+  /** Show "Shared" option (team_id=null) — typically for admins */
   allowShared?: boolean
   className?: string
 }
@@ -24,13 +24,13 @@ export function TeamSelect({ value, onChange, allowShared = false, className = '
   }, [teams, value, onChange, allowShared])
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400">Chargement des équipes…</p>
+    return <p className="text-sm text-gray-400">Loading teams…</p>
   }
 
   if (!teams?.length) {
     return (
       <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-        Aucune équipe disponible. Rejoignez une équipe dans les paramètres.
+        No teams available. Join a team in settings.
       </p>
     )
   }
@@ -38,7 +38,7 @@ export function TeamSelect({ value, onChange, allowShared = false, className = '
   if (teams.length === 1 && !allowShared) {
     return (
       <div>
-        <label className="label">Équipe</label>
+        <label className="label">Team</label>
         <p className="text-sm text-gray-600 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
           {teams[0].name}
         </p>
@@ -48,21 +48,21 @@ export function TeamSelect({ value, onChange, allowShared = false, className = '
 
   return (
     <div>
-      <label className="label">Équipe</label>
+      <label className="label">Team</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
         className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
       >
-        {allowShared && <option value="">Partagé (tout le projet)</option>}
-        {!allowShared && <option value="">Équipe par défaut</option>}
+        {allowShared && <option value="">Shared (entire project)</option>}
+        {!allowShared && <option value="">Default team</option>}
         {teams.map(t => (
           <option key={t.id} value={t.id}>{t.name}</option>
         ))}
       </select>
       {allowShared && (
         <p className="text-xs text-gray-400 mt-1">
-          « Partagé » = visible par tous les membres du projet.
+          "Shared" = visible to all project members.
         </p>
       )}
     </div>

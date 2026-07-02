@@ -13,7 +13,7 @@ const sizes = {
 export function Spinner({ size = 'md', label, className = '' }: SpinnerProps) {
   return (
     <div className={`loading-center ${className}`.trim()}>
-      <div className={`spinner ${sizes[size]}`} role="status" aria-label={label ?? 'Chargement'} />
+      <div className={`spinner ${sizes[size]}`} role="status" aria-label={label ?? 'Loading'} />
       {label && <p className="text-sm text-gray-400">{label}</p>}
     </div>
   )

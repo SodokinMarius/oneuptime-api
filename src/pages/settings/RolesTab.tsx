@@ -23,10 +23,10 @@ function RoleForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="label">Nom du rôle *</label>
+        <label className="label">Role name *</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           className="input-field"
-          placeholder="Développeur, Ops, Viewer..." />
+          placeholder="Developer, Ops, Viewer..." />
       </div>
       <div>
         <label className="label">Description</label>
@@ -47,7 +47,7 @@ function RoleForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="flex justify-end pt-1">
         <button type="submit" disabled={mut.isPending}
           className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors">
-          {mut.isPending ? 'Création...' : 'Créer le rôle'}
+          {mut.isPending ? 'Creating...' : 'Create role'}
         </button>
       </div>
     </form>
@@ -74,15 +74,15 @@ export default function RolesTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">{roles?.length ?? 0} rôle(s)</p>
+        <p className="text-sm text-gray-500">{roles?.length ?? 0} role(s)</p>
         <button onClick={() => setShowCreate(true)}
           className="btn-primary">
-          + Nouveau rôle
+          + New role
         </button>
       </div>
 
       {!roles?.length ? (
-        <EmptyState icon={<IconShieldCheck size={24} />} title="Aucun rôle" />
+        <EmptyState icon={<IconShieldCheck size={24} />} title="No roles" />
       ) : (
         <div className="space-y-2">
           {roles.map((role: Role) => (
@@ -92,16 +92,16 @@ export default function RolesTab() {
                 <div className="flex items-center gap-3">
                   <span className="font-medium text-gray-900">{role.name}</span>
                   {role.is_system && (
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">système</span>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">system</span>
                   )}
                   <span className="text-xs text-gray-400">{role.permissions.length} permission(s)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">{formatRelative(role.created_at)}</span>
                   {!role.is_system && (
-                    <button onClick={e => { e.stopPropagation(); if (confirm('Supprimer ce rôle ?')) deleteMut.mutate(role.id) }}
+                    <button onClick={e => { e.stopPropagation(); if (confirm('Delete this role?')) deleteMut.mutate(role.id) }}
                       className="text-xs border border-red-200 text-red-500 px-2 py-0.5 rounded hover:bg-red-50">
-                      Suppr.
+                      Del.
                     </button>
                   )}
                   <span className="text-gray-400 text-sm">{expanded === role.id ? '▲' : '▼'}</span>
@@ -125,7 +125,7 @@ export default function RolesTab() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau rôle" size="lg">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New role" size="lg">
         <RoleForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['roles'] }) }} />
       </Modal>
     </div>

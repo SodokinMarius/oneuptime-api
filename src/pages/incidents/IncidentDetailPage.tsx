@@ -74,7 +74,7 @@ export default function IncidentDetailPage() {
       setNoteError('')
     },
     onError: (err: any) => {
-      setNoteError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Impossible d\'ajouter la note.')
+      setNoteError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Unable to add note.')
     },
   })
   const timelineMutation = useMutation({
@@ -85,11 +85,11 @@ export default function IncidentDetailPage() {
       setTimelineError('')
     },
     onError: (err: any) => {
-      setTimelineError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Impossible d\'ajouter à la timeline.')
+      setTimelineError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Unable to add to timeline.')
     },
   })
 
-  if (isLoading) return <Spinner label="Chargement…" />
+  if (isLoading) return <Spinner label="Loading…" />
   if (!incident) return null
 
   const isResolved = incident.is_resolved || incident.state_name === 'resolved'
@@ -103,7 +103,7 @@ export default function IncidentDetailPage() {
     <PageShell size="narrow">
       <button onClick={() => navigate(-1)} className="back-link">
         <IconChevronLeft size={16} />
-        Retour aux incidents
+        Back to incidents
       </button>
 
       <div className="detail-header">
@@ -116,6 +116,20 @@ export default function IncidentDetailPage() {
             <TeamBadge teamId={incident.team_id} teamName={incident.team_name} />
             <span className="text-xs text-gray-400">{formatRelative(incident.created_at)}</span>
           </div>
+          {incident.escalation_state && !isResolved && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+              <p className="font-medium text-amber-900">
+                Escalation: {incident.escalation_state.policy_name}
+              </p>
+              <p className="text-amber-800 mt-1">
+                Step {incident.escalation_state.current_step_order}
+                {incident.escalation_state.completed ? ' · completed' : ' · in progress'}
+                {incident.escalation_state.last_escalated_at && (
+                  <> · last escalated {formatRelative(incident.escalation_state.last_escalated_at)}</>
+                )}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -123,17 +137,17 @@ export default function IncidentDetailPage() {
         {!isResolved && (
           <>
             <Button variant="warning" onClick={() => ackMutation.mutate()} disabled={ackMutation.isPending}>
-              {ackMutation.isPending ? '…' : 'Accuser réception'}
+              {ackMutation.isPending ? '…' : 'Acknowledge'}
             </Button>
             <Button variant="success" onClick={() => resolveMutation.mutate()} disabled={resolveMutation.isPending}>
-              {resolveMutation.isPending ? '…' : 'Résoudre'}
+              {resolveMutation.isPending ? '…' : 'Resolve'}
             </Button>
-            <Button variant="secondary" onClick={() => setShowAssign(true)}>Assigner</Button>
+            <Button variant="secondary" onClick={() => setShowAssign(true)}>Assign</Button>
           </>
         )}
         {isResolved && activeTab === 'postmortem' && (
           <Button onClick={() => setShowPostmortem(true)}>
-            {postmortem ? 'Modifier' : 'Rédiger'} le postmortem
+            {postmortem ? 'Edit' : 'Write'} postmortem
           </Button>
         )}
       </div>
@@ -146,33 +160,33 @@ export default function IncidentDetailPage() {
           <div className="card p-4 sm:p-5">
             <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={3}
               className="input-field resize-none"
-              placeholder="Ajouter une note…" />
+              placeholder="Add a note…" />
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={noteInternal} onChange={e => setNoteInternal(e.target.checked)}
                   className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-                Note interne
+                Internal note
               </label>
               <Button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending || !noteContent.trim()}>
-                {noteMutation.isPending ? 'Ajout…' : 'Ajouter'}
+                {noteMutation.isPending ? 'Adding…' : 'Add'}
               </Button>
             </div>
           </div>
           {noteError && <p className="form-error">{noteError}</p>}
-          {notesError && <p className="form-error">Erreur lors du chargement des notes.</p>}
+          {notesError && <p className="form-error">Error loading notes.</p>}
           {(!notes || notes.length === 0) ? (
-            <p className="text-center text-gray-400 py-8 text-sm">Aucune note pour l'instant.</p>
+            <p className="text-center text-gray-400 py-8 text-sm">No notes yet.</p>
           ) : (
             <div className="space-y-3">
               {notes.map(note => {
                 const isInternal = note.is_internal ?? !note.is_public
-                const authorLabel = note.author?.full_name || note.author?.email || note.author_email || 'Utilisateur'
+                const authorLabel = note.author?.full_name || note.author?.email || note.author_email || 'User'
                 return (
                 <div key={note.id} className={`rounded-xl p-4 ${isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-gray-200'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">{authorLabel}</span>
                     <div className="flex items-center gap-2">
-                      {isInternal && <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Interne</span>}
+                      {isInternal && <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Internal</span>}
                       <span className="text-xs text-gray-400">{formatRelative(note.created_at)}</span>
                     </div>
                   </div>
@@ -190,14 +204,14 @@ export default function IncidentDetailPage() {
           <div className="card p-4 sm:p-5 flex flex-col sm:flex-row gap-3">
             <input value={timelineMsg} onChange={e => setTimelineMsg(e.target.value)}
               className="input-field flex-1"
-              placeholder="Ajouter une entrée à la timeline…" />
+              placeholder="Add a timeline entry…" />
             <Button onClick={() => timelineMutation.mutate()} disabled={timelineMutation.isPending || !timelineMsg.trim()} className="shrink-0">
-              {timelineMutation.isPending ? '…' : 'Ajouter'}
+              {timelineMutation.isPending ? '…' : 'Add'}
             </Button>
           </div>
           {timelineError && <p className="form-error">{timelineError}</p>}
           {timelineEntries.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">Timeline vide.</p>
+            <p className="text-center text-gray-400 py-8 text-sm">Timeline is empty.</p>
           ) : (
             <div className="relative">
               <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200" />
@@ -215,7 +229,7 @@ export default function IncidentDetailPage() {
                         <span className="text-xs text-gray-400">{when ? formatDate(when) : ''}</span>
                       </div>
                       <p className="text-sm text-gray-700">{message}</p>
-                      {entry.actor && <p className="text-xs text-gray-400 mt-1">par {entry.actor.full_name}</p>}
+                      {entry.actor && <p className="text-xs text-gray-400 mt-1">by {entry.actor.full_name}</p>}
                     </div>
                   </div>
                 )})}
@@ -231,11 +245,11 @@ export default function IncidentDetailPage() {
           {!postmortem ? (
             <div className="text-center py-16">
               <p className="text-4xl mb-3">📋</p>
-              <p className="text-base font-medium text-gray-800 mb-1">Aucun postmortem rédigé</p>
-              <p className="text-sm text-gray-500 mb-6">Documentez les causes racines et les actions correctives.</p>
+              <p className="text-base font-medium text-gray-800 mb-1">No postmortem written yet</p>
+              <p className="text-sm text-gray-500 mb-6">Document root causes and corrective actions.</p>
               <button onClick={() => setShowPostmortem(true)}
                 className="btn-primary">
-                Rédiger le postmortem
+                Write postmortem
               </button>
             </div>
           ) : (
@@ -243,18 +257,18 @@ export default function IncidentDetailPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-semibold text-gray-900">Postmortem</h3>
-                  {postmortem.published && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Publié</span>}
+                  {postmortem.published && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Published</span>}
                 </div>
                 <button onClick={() => setShowPostmortem(true)}
-                  className="text-sm text-blue-600 hover:underline">Modifier</button>
+                  className="text-sm text-blue-600 hover:underline">Edit</button>
               </div>
               {[
-                { label: 'Résumé', value: postmortem.summary },
-                { label: 'Cause racine', value: postmortem.root_cause },
+                { label: 'Summary', value: postmortem.summary },
+                { label: 'Root cause', value: postmortem.root_cause },
                 { label: 'Impact', value: postmortem.impact },
                 { label: 'Timeline', value: postmortem.timeline },
                 {
-                  label: 'Actions correctives',
+                  label: 'Corrective actions',
                   value: Array.isArray(postmortem.action_items)
                     ? postmortem.action_items.join('\n')
                     : postmortem.action_items,
@@ -271,7 +285,7 @@ export default function IncidentDetailPage() {
       )}
 
       {/* Assign Modal */}
-      <Modal open={showAssign} onClose={() => setShowAssign(false)} title="Assigner l'incident" size="sm">
+      <Modal open={showAssign} onClose={() => setShowAssign(false)} title="Assign incident" size="sm">
         <AssignForm incidentId={id!} onClose={() => setShowAssign(false)} />
       </Modal>
 
@@ -296,24 +310,24 @@ function AssignForm({ incidentId, onClose }: { incidentId: string; onClose: () =
   const mutation = useMutation({
     mutationFn: () => incidentsApi.assign(incidentId, userId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['incident', incidentId] }); onClose() },
-    onError: (err: any) => setError(err.response?.data?.detail || 'Erreur.'),
+    onError: (err: any) => setError(err.response?.data?.detail || 'Error.'),
   })
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="label">Assigner à</label>
+        <label className="label">Assign to</label>
         <select value={userId} onChange={e => setUserId(e.target.value)}
           className="input-field">
-          <option value="">Sélectionner un utilisateur...</option>
+          <option value="">Select a user...</option>
           {data?.results?.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
         </select>
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="form-actions">
-        <button onClick={onClose} className="btn-ghost">Annuler</button>
+        <button onClick={onClose} className="btn-ghost">Cancel</button>
         <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !userId}>
-          {mutation.isPending ? 'Assignation…' : 'Assigner'}
+          {mutation.isPending ? 'Assigning…' : 'Assign'}
         </Button>
       </div>
     </div>
@@ -338,15 +352,15 @@ function PostmortemForm({ incidentId, existing, onClose }: { incidentId: string;
       qc.invalidateQueries({ queryKey: ['incident-postmortem', incidentId] })
       onClose()
     },
-    onError: (err: any) => setError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Erreur lors de l\'enregistrement.'),
+    onError: (err: any) => setError(err.response?.data?.detail || err.response?.data?.errors?.[0]?.message || 'Error saving.'),
   })
 
   const fields = [
-    { key: 'summary', label: 'Résumé', placeholder: 'Résumé concis de l\'incident...' },
-    { key: 'root_cause', label: 'Cause racine', placeholder: 'Qu\'est-ce qui a causé l\'incident ?' },
-    { key: 'impact', label: 'Impact', placeholder: 'Quels services ou utilisateurs ont été affectés ?' },
-    { key: 'timeline', label: 'Timeline', placeholder: 'Chronologie des événements...' },
-    { key: 'action_items', label: 'Actions correctives', placeholder: 'Mesures préventives à prendre...' },
+    { key: 'summary', label: 'Summary', placeholder: 'Brief incident summary...' },
+    { key: 'root_cause', label: 'Root cause', placeholder: 'What caused the incident?' },
+    { key: 'impact', label: 'Impact', placeholder: 'Which services or users were affected?' },
+    { key: 'timeline', label: 'Timeline', placeholder: 'Event chronology...' },
+    { key: 'action_items', label: 'Corrective actions', placeholder: 'Preventive measures to take...' },
   ] as const
 
   return (
@@ -362,13 +376,13 @@ function PostmortemForm({ incidentId, existing, onClose }: { incidentId: string;
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.published} onChange={e => setForm(p => ({ ...p, published: e.target.checked }))}
           className="rounded border-gray-300 text-blue-600" />
-        <span className="text-sm text-gray-700 font-medium">Publier le postmortem</span>
+        <span className="text-sm text-gray-700 font-medium">Publish postmortem</span>
       </label>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       <div className="form-actions">
-        <button onClick={onClose} className="btn-ghost">Annuler</button>
+        <button onClick={onClose} className="btn-ghost">Cancel</button>
         <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-          {mutation.isPending ? 'Enregistrement…' : 'Enregistrer'}
+          {mutation.isPending ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </div>

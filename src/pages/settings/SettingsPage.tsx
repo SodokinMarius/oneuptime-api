@@ -7,17 +7,21 @@ import ProfileTab from './ProfileTab'
 import ResourcePoliciesTab from './ResourcePoliciesTab'
 import SSOTab from './SSOTab'
 import ProjectsTab from './ProjectsTab'
+import EscalationTab from './EscalationTab'
+import WorkflowsTab from './WorkflowsTab'
 import { PageShell } from '@/components/ui/PageShell'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Tabs } from '@/components/ui/Tabs'
 
 const TABS = [
-  { id: 'profile', label: 'Profil' },
-  { id: 'projects', label: 'Projets' },
-  { id: 'roles', label: 'Rôles' },
-  { id: 'teams', label: 'Équipes' },
-  { id: 'apikeys', label: 'Clés API' },
-  { id: 'policies', label: 'Politiques' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'roles', label: 'Roles' },
+  { id: 'teams', label: 'Teams' },
+  { id: 'escalation', label: 'Escalation' },
+  { id: 'workflows', label: 'Workflows' },
+  { id: 'apikeys', label: 'API keys' },
+  { id: 'policies', label: 'Policies' },
   { id: 'sso', label: 'SSO' },
 ] as const
 
@@ -44,8 +48,8 @@ export default function SettingsPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Paramètres"
-        subtitle="Profil, projets, rôles, équipes, clés API et SSO"
+        title="Settings"
+        subtitle="Profile, projects, roles, teams, incident automation, API keys, and SSO"
       />
 
       <Tabs tabs={[...TABS]} active={active} onChange={handleTabChange} />
@@ -55,6 +59,8 @@ export default function SettingsPage() {
         {active === 'projects' && <ProjectsTab />}
         {active === 'roles' && <RolesTab />}
         {active === 'teams' && <TeamsTab />}
+        {active === 'escalation' && <EscalationTab />}
+        {active === 'workflows' && <WorkflowsTab />}
         {active === 'apikeys' && <ApiKeysTab />}
         {active === 'policies' && <ResourcePoliciesTab />}
         {active === 'sso' && <SSOTab />}

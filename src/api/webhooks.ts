@@ -26,6 +26,7 @@ export const webhooksApi = {
     url: string
     event_types: string[]
     secret?: string
+    payload_format?: string
     team_id?: string | null
   }) =>
     client.post<Webhook>('/webhooks', data),

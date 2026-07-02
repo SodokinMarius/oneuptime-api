@@ -19,10 +19,10 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
     onSuccess,
     onError: (err: any) => {
       const d = err.response?.data
-      const msg = d?.detail || d?.errors?.[0]?.message || 'Erreur'
+      const msg = d?.detail || d?.errors?.[0]?.message || 'Error'
       setError(
         msg.includes('No User matches') || msg.includes('404')
-          ? 'Aucun utilisateur trouvé avec cet email.'
+          ? 'No user found with this email.'
           : msg
       )
     },
@@ -31,40 +31,40 @@ function AddMemberForm({ teamId, onSuccess }: { teamId: string; onSuccess: () =>
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="label">Email de l'utilisateur *</label>
+        <label className="label">User email *</label>
         <input
           type="email"
           required
           value={form.email}
           onChange={e => setForm({ ...form, email: e.target.value })}
           className="input-field"
-          placeholder="collegue@exemple.com"
+          placeholder="colleague@example.com"
           autoComplete="off"
         />
         <p className="text-xs text-gray-400 mt-1">
-          L'utilisateur doit d'abord être invité dans l'organisation (page Utilisateurs), puis accepté.
-          L'ajout à une équipe n'envoie pas un email.
+          The user must first be invited to the organization (Users page) and accept.
+          Adding to a team does not send an email.
         </p>
       </div>
       <div>
-        <label className="label">Rôle *</label>
+        <label className="label">Role *</label>
         <select required value={form.role_id} onChange={e => setForm({ ...form, role_id: e.target.value })}
           className="input-field">
-          <option value="">Sélectionner un rôle...</option>
+          <option value="">Select a role...</option>
           {roles?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
         {rolesError && (
-          <p className="text-xs text-red-600 mt-1">Impossible de charger les rôles.</p>
+          <p className="text-xs text-red-600 mt-1">Unable to load roles.</p>
         )}
         {!rolesError && roles && roles.length === 0 && (
-          <p className="text-xs text-amber-600 mt-1">Aucun rôle disponible dans ce projet.</p>
+          <p className="text-xs text-amber-600 mt-1">No roles available in this project.</p>
         )}
       </div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
       <div className="flex justify-end">
         <button type="submit" disabled={mut.isPending || !form.email || !form.role_id}
           className="btn-primary disabled:opacity-50">
-          {mut.isPending ? 'Ajout...' : 'Ajouter le membre'}
+          {mut.isPending ? 'Adding...' : 'Add member'}
         </button>
       </div>
     </form>
@@ -103,11 +103,11 @@ function TeamCard({ team }: { team: Team }) {
         <div className="flex gap-2">
           <button onClick={() => { setExpanded(true); setShowAdd(true) }}
             className="text-xs border border-blue-200 text-blue-600 px-2.5 py-1 rounded-lg hover:bg-blue-50 transition-colors">
-            + Membre
+            + Member
           </button>
-          <button onClick={() => { if (confirm('Supprimer cette équipe ?')) deleteMut.mutate() }}
+          <button onClick={() => { if (confirm('Delete this team?')) deleteMut.mutate() }}
             className="text-xs border border-red-200 text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
-            Suppr.
+            Del.
           </button>
           <span className="text-gray-400 cursor-pointer px-1" onClick={() => setExpanded(!expanded)}>
             {expanded ? '▲' : '▼'}
@@ -122,13 +122,13 @@ function TeamCard({ team }: { team: Team }) {
               <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : membersError ? (
-            <p className="text-sm text-red-400 text-center py-3">Impossible de charger les membres.</p>
+            <p className="text-sm text-red-400 text-center py-3">Unable to load members.</p>
           ) : members && members.length > 0 ? (
             <div className="space-y-2">
               {membersFetching && (
                 <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
                   <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  Mise à jour...
+                  Updating...
                 </div>
               )}
               {members.map((m: any) => (
@@ -146,12 +146,12 @@ function TeamCard({ team }: { team: Team }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-3">Aucun membre dans cette équipe.</p>
+            <p className="text-sm text-gray-400 text-center py-3">No members in this team.</p>
           )}
         </div>
       )}
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title={`Ajouter un membre — ${team.name}`} size="sm">
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title={`Add member — ${team.name}`} size="sm">
         <AddMemberForm teamId={team.id} onSuccess={() => {
           setShowAdd(false)
           qc.invalidateQueries({ queryKey: ['team-members', team.id] })
@@ -181,7 +181,7 @@ export default function TeamsTab() {
     },
     onError: (err: any) => {
       const d = err.response?.data
-      setCreateError(d?.detail || d?.errors?.[0]?.message || 'Erreur')
+      setCreateError(d?.detail || d?.errors?.[0]?.message || 'Error')
     },
   })
 
@@ -190,28 +190,28 @@ export default function TeamsTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">{teams?.length ?? 0} équipe(s)</p>
+        <p className="text-sm text-gray-500">{teams?.length ?? 0} team(s)</p>
         <button onClick={() => setShowCreate(true)}
           className="btn-primary">
-          + Nouvelle équipe
+          + New team
         </button>
       </div>
 
       {!teams?.length ? (
-        <EmptyState icon={<IconUsers size={24} />} title="Aucune équipe" description="Créez des équipes pour organiser les accès." />
+        <EmptyState icon={<IconUsers size={24} />} title="No teams" description="Create teams to organize access." />
       ) : (
         <div className="space-y-3">
           {teams.map((t: Team) => <TeamCard key={t.id} team={t} />)}
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouvelle équipe" size="sm">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New team" size="sm">
         <form onSubmit={e => { e.preventDefault(); setCreateError(''); createMut.mutate() }} className="space-y-4">
           <div>
             <label className="label">Nom *</label>
             <input required value={newTeam.name} onChange={e => setNewTeam({ ...newTeam, name: e.target.value })}
               className="input-field"
-              placeholder="Équipe Backend, DevOps..." />
+              placeholder="Backend team, DevOps..." />
           </div>
           <div>
             <label className="label">Description</label>
@@ -222,7 +222,7 @@ export default function TeamsTab() {
           <div className="flex justify-end">
             <button type="submit" disabled={createMut.isPending}
               className="btn-primary disabled:opacity-50">
-              {createMut.isPending ? 'Création...' : 'Créer'}
+              {createMut.isPending ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

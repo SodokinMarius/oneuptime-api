@@ -21,16 +21,38 @@ import {
   IconZap,
 } from '@/components/ui/Icons'
 
-const navItems = [
-  { to: '/dashboard',    label: 'Dashboard',       Icon: IconLayoutDashboard },
-  { to: '/monitors',     label: 'Monitors',         Icon: IconActivity },
-  { to: '/incidents',    label: 'Incidents',        Icon: IconAlertTriangle },
-  { to: '/maintenance',  label: 'Maintenance',      Icon: IconWrench },
-  { to: '/status-pages', label: 'Status Pages',     Icon: IconGlobe },
-  { to: '/webhooks',     label: 'Webhooks',         Icon: IconBell },
-  { to: '/audit',        label: "Journal d'audit",  Icon: IconShieldCheck },
-  { to: '/users',        label: 'Utilisateurs',     Icon: IconUsers },
-  { to: '/settings',     label: 'Paramètres',       Icon: IconSettings },
+type NavItem = { to: string; label: string; Icon: typeof IconActivity }
+
+const navSections: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Overview',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', Icon: IconLayoutDashboard },
+    ],
+  },
+  {
+    title: 'Essentials',
+    items: [
+      { to: '/monitors', label: 'Monitoring', Icon: IconActivity },
+      { to: '/incidents', label: 'Incidents', Icon: IconAlertTriangle },
+      { to: '/status-pages', label: 'Status Pages', Icon: IconGlobe },
+      { to: '/maintenance', label: 'Maintenance', Icon: IconWrench },
+    ],
+  },
+  {
+    title: 'Platform',
+    items: [
+      { to: '/webhooks', label: 'Webhooks', Icon: IconBell },
+      { to: '/audit', label: 'Audit Log', Icon: IconShieldCheck },
+    ],
+  },
+  {
+    title: 'Administration',
+    items: [
+      { to: '/users', label: 'Users', Icon: IconUsers },
+      { to: '/settings', label: 'Settings', Icon: IconSettings },
+    ],
+  },
 ]
 
 export default function AppLayout() {
@@ -75,24 +97,24 @@ export default function AppLayout() {
       <div className={`px-4 py-5 flex items-center shrink-0 ${desktopCollapsed ? 'justify-center' : 'justify-between'}`}>
         {!desktopCollapsed && (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-sm shadow-brand-600/20">
               <IconZap size={16} className="text-white" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white leading-none tracking-tight">OneUptime</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Monitoring Platform</p>
+              <p className="text-sm font-bold text-slate-900 leading-none tracking-tight">OneUptime</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Observability Platform</p>
             </div>
           </div>
         )}
         {desktopCollapsed && (
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-sm">
             <IconZap size={16} className="text-white" strokeWidth={2.5} />
           </div>
         )}
         <button
           onClick={() => setDesktopCollapsed(!desktopCollapsed)}
-          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-          title={desktopCollapsed ? 'Déplier' : 'Replier'}
+          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+          title={desktopCollapsed ? 'Expand' : 'Collapse'}
         >
           {desktopCollapsed
             ? <IconChevronRight size={15} />
@@ -101,61 +123,72 @@ export default function AppLayout() {
         </button>
       </div>
 
-      {/* Divider */}
-      <div className="mx-4 h-px bg-white/8 mb-2 shrink-0" />
+      <div className="mx-4 h-px bg-slate-200 mb-2 shrink-0" />
 
       <ProjectSwitcher collapsed={desktopCollapsed} />
 
-      {/* Nav */}
-      <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto py-1">
-        {navItems.map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            title={desktopCollapsed ? label : undefined}
-            className={({ isActive }) =>
-              `sidebar-item ${isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'} ${desktopCollapsed ? 'justify-center px-2' : ''}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon size={17} className={isActive ? 'text-white' : 'text-slate-400'} strokeWidth={isActive ? 2 : 1.75} />
-                {!desktopCollapsed && <span className="truncate">{label}</span>}
-              </>
+      {/* Grouped navigation — mirrors oneuptime.com product sections */}
+      <nav className="flex-1 px-2.5 overflow-y-auto py-1">
+        {navSections.map((section) => (
+          <div key={section.title} className="mb-1">
+            {!desktopCollapsed && (
+              <p className="sidebar-section-label">{section.title}</p>
             )}
-          </NavLink>
+            <div className="space-y-0.5">
+              {section.items.map(({ to, label, Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  title={desktopCollapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    `sidebar-item ${isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'} ${desktopCollapsed ? 'justify-center px-2' : ''}`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        size={17}
+                        className={isActive ? 'text-brand-600' : 'text-slate-400'}
+                        strokeWidth={isActive ? 2 : 1.75}
+                      />
+                      {!desktopCollapsed && <span className="truncate">{label}</span>}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
       {/* User */}
-      <div className="px-2.5 py-3 mt-auto shrink-0">
-        <div className="mx-0.5 h-px bg-white/8 mb-3" />
+      <div className="px-2.5 py-3 mt-auto shrink-0 border-t border-slate-200">
         {!desktopCollapsed ? (
-          <div className="flex items-center gap-2.5 px-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-semibold text-white shrink-0 ring-2 ring-brand-400/30">
+          <div className="flex items-center gap-2.5 px-2 mb-2 pt-2">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 shrink-0 ring-2 ring-brand-50">
               {userInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate leading-none">
+              <p className="text-sm font-medium text-slate-900 truncate leading-none">
                 {user?.first_name} {user?.last_name}
               </p>
-              <p className="text-xs text-slate-400 truncate mt-0.5">{user?.email}</p>
+              <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
             </div>
           </div>
         ) : (
-          <div className="flex justify-center mb-2">
-            <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-semibold text-white ring-2 ring-brand-400/30">
+          <div className="flex justify-center mb-2 pt-2">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700">
               {userInitials}
             </div>
           </div>
         )}
         <button
           onClick={handleLogout}
-          title="Se déconnecter"
-          className={`w-full sidebar-item sidebar-item-inactive text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${desktopCollapsed ? 'justify-center px-2' : ''}`}
+          title="Sign out"
+          className={`w-full sidebar-item sidebar-item-inactive text-slate-500 hover:text-red-600 hover:bg-red-50 ${desktopCollapsed ? 'justify-center px-2' : ''}`}
         >
           <IconLogOut size={16} />
-          {!desktopCollapsed && <span>Se déconnecter</span>}
+          {!desktopCollapsed && <span>Sign out</span>}
         </button>
       </div>
     </div>
@@ -164,56 +197,50 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen bg-slate-50">
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
           aria-hidden="true"
         />
       )}
 
-      {/* Mobile drawer */}
       <aside
         ref={sidebarRef}
         className={`
           fixed inset-y-0 left-0 z-40 w-64
-          bg-[#13111f] text-white flex flex-col
+          bg-white text-slate-900 flex flex-col
           transform transition-transform duration-300 ease-in-out
-          lg:hidden border-r border-white/5
+          lg:hidden border-r border-slate-200 shadow-xl
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         <button
           onClick={() => setSidebarOpen(false)}
-          className="absolute top-4 right-3.5 text-slate-400 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
-          aria-label="Fermer"
+          className="absolute top-4 right-3.5 text-slate-400 hover:text-slate-700 p-1.5 rounded-md hover:bg-slate-100 transition-colors"
+          aria-label="Close"
         >
           <IconX size={16} />
         </button>
         <SidebarContent />
       </aside>
 
-      {/* Desktop sidebar */}
       <aside
         className={`
           hidden lg:flex flex-col
-          bg-[#13111f] text-white shrink-0
+          bg-white text-slate-900 shrink-0
           transition-all duration-300 ease-in-out
-          border-r border-white/5
+          border-r border-slate-200
           ${desktopCollapsed ? 'w-[60px]' : 'w-60'}
         `}
       >
         <SidebarContent />
       </aside>
 
-      {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-        {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 shrink-0 z-20 shadow-sm safe-area-top">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shrink-0 z-20">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             aria-label="Menu"
           >
             <IconMenu size={18} />
@@ -222,17 +249,16 @@ export default function AppLayout() {
             <div className="w-6 h-6 rounded-md bg-brand-600 flex items-center justify-center">
               <IconZap size={12} className="text-white" strokeWidth={2.5} />
             </div>
-            <span className="font-bold text-gray-900 text-sm">OneUptime</span>
+            <span className="font-bold text-slate-900 text-sm">OneUptime</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-semibold text-white ring-2 ring-brand-200">
+          <div className="ml-auto">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700">
               {userInitials}
             </div>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-auto overscroll-contain">
+        <main className="flex-1 overflow-auto overscroll-contain bg-slate-50">
           <Outlet />
         </main>
       </div>

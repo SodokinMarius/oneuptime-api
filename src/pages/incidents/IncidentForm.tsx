@@ -32,7 +32,7 @@ export default function IncidentForm({ onSuccess }: Props) {
       } else if (typeof data === 'object') {
         setError(Object.entries(data).map(([k, v]) => `${k} : ${Array.isArray(v) ? v.join(', ') : v}`).join('\n'))
       } else {
-        setError('Une erreur est survenue.')
+        setError('An error occurred.')
       }
     },
   })
@@ -40,33 +40,33 @@ export default function IncidentForm({ onSuccess }: Props) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="label">Titre *</label>
+        <label className="label">Title *</label>
         <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
           className="input-field"
-          placeholder="API de paiement inaccessible" />
+          placeholder="Payment API unreachable" />
       </div>
 
       <div>
         <label className="label">Description</label>
         <textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
           className="input-field resize-none"
-          placeholder="Décrivez le problème..." />
+          placeholder="Describe the issue..." />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label">Sévérité</label>
+          <label className="label">Severity</label>
           <select value={form.severity_id} onChange={e => setForm({ ...form, severity_id: e.target.value })}
             className="input-field">
-            <option value="">Sélectionner...</option>
+            <option value="">Select...</option>
             {severities?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="label">État initial</label>
+          <label className="label">Initial state</label>
           <select value={form.state_id} onChange={e => setForm({ ...form, state_id: e.target.value })}
             className="input-field">
-            <option value="">Sélectionner...</option>
+            <option value="">Select...</option>
             {states?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
@@ -79,7 +79,7 @@ export default function IncidentForm({ onSuccess }: Props) {
       <div className="flex justify-end pt-1">
         <button type="submit" disabled={mut.isPending}
           className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors">
-          {mut.isPending ? 'Création...' : 'Déclarer l\'incident'}
+          {mut.isPending ? 'Creating...' : 'Declare incident'}
         </button>
       </div>
     </form>

@@ -32,7 +32,7 @@ function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
       } else if (typeof d === 'object') {
         setError(Object.entries(d).map(([k, v]) => `${k} : ${Array.isArray(v) ? v.join(', ') : v}`).join('\n'))
       } else {
-        setError('Une erreur est survenue.')
+        setError('An error occurred.')
       }
     },
   })
@@ -40,9 +40,9 @@ function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form onSubmit={e => { e.preventDefault(); setError(''); mut.mutate() }} className="space-y-4">
       <div>
-        <label className="label">Nom *</label>
+        <label className="label">Name *</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="input-field" placeholder="Status de production" />
+          className="input-field" placeholder="Production status" />
       </div>
       <div>
         <label className="label">Slug (URL) *</label>
@@ -50,7 +50,7 @@ function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
           <span className="px-3 py-2.5 bg-gray-50 text-gray-500 text-sm border-b sm:border-b-0 sm:border-r border-gray-200 shrink-0">/status/</span>
           <input required value={form.slug}
             onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-            className="flex-1 px-3 py-2.5 text-sm outline-none bg-white" placeholder="ma-page" />
+            className="flex-1 px-3 py-2.5 text-sm outline-none bg-white" placeholder="my-page" />
         </div>
       </div>
       <div>
@@ -60,13 +60,13 @@ function StatusPageForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
       <label className="flex items-start sm:items-center gap-2 text-sm text-gray-700">
         <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} className="rounded mt-0.5 sm:mt-0 text-brand-600 focus:ring-brand-500" />
-        Page publique (accessible sans authentification)
+        Public page (accessible without authentication)
       </label>
       <TeamSelect value={teamId} onChange={setTeamId} />
       {error && <div className="form-error whitespace-pre-line">{error}</div>}
       <div className="form-actions">
         <Button type="submit" disabled={mut.isPending}>
-          {mut.isPending ? 'Création…' : 'Créer la page'}
+          {mut.isPending ? 'Creating…' : 'Create page'}
         </Button>
       </div>
     </form>
@@ -98,7 +98,7 @@ export default function StatusPagesPage() {
         actions={
           <Button onClick={() => setShowCreate(true)} fullWidth>
             <IconPlus size={16} />
-            Nouvelle page
+            New page
           </Button>
         }
       />
@@ -108,13 +108,13 @@ export default function StatusPagesPage() {
       </div>
 
       {isLoading ? (
-        <Spinner label="Chargement…" />
+        <Spinner label="Loading…" />
       ) : pages.length === 0 ? (
         <EmptyState
           icon={<IconGlobe size={24} />}
-          title="Aucune status page"
-          description="Créez une page publique pour communiquer l'état de vos services."
-          action={<Button onClick={() => setShowCreate(true)}>Créer une page</Button>}
+          title="No status pages"
+          description="Create a public page to communicate the status of your services."
+          action={<Button onClick={() => setShowCreate(true)}>Create page</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -127,22 +127,22 @@ export default function StatusPagesPage() {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.is_public ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {p.is_public ? 'Public' : 'Privé'}
+                    {p.is_public ? 'Public' : 'Private'}
                   </span>
                   <TeamBadge teamId={p.team_id} teamName={p.team_name} />
                 </div>
               </div>
               {p.description && <p className="text-sm text-gray-500 mb-3 line-clamp-2 flex-1">{p.description}</p>}
-              <p className="text-xs text-gray-400 mb-4">Créée {formatRelative(p.created_at)}</p>
+              <p className="text-xs text-gray-400 mb-4">Created {formatRelative(p.created_at)}</p>
               <div className="flex flex-wrap gap-2 mt-auto">
                 <Link to={`/status-pages/${p.id}`} className="btn-secondary btn-sm flex-1 text-center justify-center">
-                  Gérer
+                  Manage
                 </Link>
                 <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
-                  Ouvrir ↗
+                  Open ↗
                 </a>
-                <Button variant="danger" size="sm" onClick={() => { if (confirm('Supprimer cette page ?')) deleteMut.mutate(p.id) }}>
-                  Suppr.
+                <Button variant="danger" size="sm" onClick={() => { if (confirm('Delete this page?')) deleteMut.mutate(p.id) }}>
+                  Del.
                 </Button>
               </div>
             </div>
@@ -150,7 +150,7 @@ export default function StatusPagesPage() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouvelle status page">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New status page">
         <StatusPageForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['status-pages'] }) }} />
       </Modal>
     </PageShell>

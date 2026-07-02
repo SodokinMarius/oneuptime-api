@@ -46,7 +46,7 @@ export default function AcceptInvitePage() {
       navigate('/dashboard')
     } catch (err: any) {
       const d = err.response?.data
-      const msg = d?.errors?.[0]?.message || d?.detail || 'Invitation invalide ou expirée.'
+      const msg = d?.errors?.[0]?.message || d?.detail || 'Invalid or expired invitation.'
       if (msg.toLowerCase().includes('password')) {
         setNeedsPassword(true)
       }
@@ -67,7 +67,7 @@ export default function AcceptInvitePage() {
             <IconZap size={22} className="text-white" strokeWidth={2.5} />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Invitation</h1>
-          <p className="text-slate-400 text-sm mt-1.5">Acceptez l'invitation à rejoindre l'organisation</p>
+          <p className="text-slate-400 text-sm mt-1.5">Accept the invitation to join the organization</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 space-y-4 shadow-xl">
@@ -81,26 +81,26 @@ export default function AcceptInvitePage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className={`${inputClass} pl-10`}
-                placeholder="vous@exemple.com"
+                placeholder="you@example.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Token d'invitation</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Invitation token</label>
             <input
               required
               value={token}
               onChange={e => setToken(e.target.value)}
               className={inputClass}
-              placeholder="Token reçu par email"
+              placeholder="Token received by email"
             />
           </div>
 
           {needsPassword && (
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Mot de passe {needsPassword ? '*' : '(si nouveau compte)'}
+                Password {needsPassword ? '*' : '(if new account)'}
               </label>
               <div className="relative">
                 <IconLock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -109,12 +109,12 @@ export default function AcceptInvitePage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className={`${inputClass} pl-10`}
-                  placeholder="Minimum 8 caractères"
+                  placeholder="At least 8 characters"
                   minLength={8}
                 />
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Requis si vous créez votre compte via cette invitation.
+                Required if you are creating your account via this invitation.
               </p>
             </div>
           )}
@@ -136,15 +136,15 @@ export default function AcceptInvitePage() {
             ) : (
               <>
                 <IconCheckCircle size={16} />
-                Accepter l'invitation
+                Accept invitation
               </>
             )}
           </button>
 
           <p className="text-center text-sm text-slate-400">
-            Déjà membre ?{' '}
+            Already a member?{' '}
             <Link to="/login" className="text-brand-400 hover:text-brand-300 font-medium">
-              Se connecter
+              Sign in
             </Link>
           </p>
         </form>

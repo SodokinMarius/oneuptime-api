@@ -36,7 +36,7 @@ export default function ActivatePage() {
       navigate('/dashboard')
     } catch (err: any) {
       const d = err.response?.data
-      setError(d?.errors?.[0]?.message || d?.detail || 'Code invalide ou expiré.')
+      setError(d?.errors?.[0]?.message || d?.detail || 'Invalid or expired code.')
     } finally {
       setLoading(false)
     }
@@ -49,7 +49,7 @@ export default function ActivatePage() {
       await authApi.resendActivation(email)
       setResent(true)
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Impossible de renvoyer le code.')
+      setError(err.response?.data?.detail || 'Unable to resend the code.')
     }
   }
 
@@ -63,14 +63,14 @@ export default function ActivatePage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-500 shadow-lg shadow-brand-500/30 mb-4">
             <IconZap size={22} className="text-white" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Activez votre compte</h1>
-          <p className="text-slate-400 text-sm mt-1.5">Un code vous a été envoyé par email</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Activate your account</h1>
+          <p className="text-slate-400 text-sm mt-1.5">A code was sent to your email</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label text-slate-300">Adresse email</label>
+              <label className="label text-slate-300">Email address</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                   <IconMail size={15} />
@@ -79,14 +79,14 @@ export default function ActivatePage() {
                   type="email" required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="vous@exemple.com"
+                  placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="label text-slate-300">Code de vérification</label>
+              <label className="label text-slate-300">Verification code</label>
               <input
                 type="text" required
                 value={code}
@@ -107,7 +107,7 @@ export default function ActivatePage() {
             {resent && (
               <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm rounded-lg px-4 py-3">
                 <IconCheckCircle size={16} className="shrink-0 mt-0.5" />
-                <span>Code renvoyé — vérifiez votre boîte email.</span>
+                <span>Code resent — check your inbox.</span>
               </div>
             )}
 
@@ -119,9 +119,9 @@ export default function ActivatePage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Vérification…
+                  Verifying…
                 </span>
-              ) : 'Activer mon compte'}
+              ) : 'Activate my account'}
             </button>
           </form>
 
@@ -131,10 +131,10 @@ export default function ActivatePage() {
               className="text-brand-400 hover:text-brand-300 font-medium flex items-center gap-1.5 transition-colors"
             >
               <IconRefreshCw size={13} />
-              Renvoyer le code
+              Resend code
             </button>
             <Link to="/login" className="text-slate-400 hover:text-slate-300 transition-colors">
-              Retour à la connexion
+              Back to sign in
             </Link>
           </div>
         </div>

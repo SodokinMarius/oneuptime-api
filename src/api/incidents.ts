@@ -1,5 +1,14 @@
 import client from './client'
-import type { Incident, IncidentNote, IncidentState, IncidentSeverityObj, PaginatedResponse } from '@/types'
+import type {
+  Incident,
+  IncidentNote,
+  IncidentState,
+  IncidentSeverityObj,
+  EscalationPolicy,
+  EscalationStep,
+  IncidentWorkflowRule,
+  PaginatedResponse,
+} from '@/types'
 
 export interface TimelineEntry {
   id?: string
@@ -117,5 +126,68 @@ export const incidentsApi = {
       client.put<IncidentSeverityObj>(`/incident-severities/${id}`, data),
     delete: (id: string) =>
       client.delete(`/incident-severities/${id}`),
+  },
+
+  escalationPolicies: {
+    list: (params?: Record<string, string>) =>
+      client.get<PaginatedResponse<EscalationPolicy>>('/escalation-policies', { params }),
+
+    get: (id: string) =>
+      client.get<EscalationPolicy>(`/escalation-policies/${id}`),
+
+    create: (data: {
+      name: string
+      description?: string
+      is_default?: boolean
+      is_active?: boolean
+      severity_names?: string[]
+      team_id?: string | null
+    }) =>
+      client.post<EscalationPolicy>('/escalation-policies', data),
+
+    update: (id: string, data: Partial<EscalationPolicy>) =>
+      client.put<EscalationPolicy>(`/escalation-policies/${id}`, data),
+
+    delete: (id: string) =>
+      client.delete(`/escalation-policies/${id}`),
+
+    steps: (id: string) =>
+      client.get<EscalationStep[]>(`/escalation-policies/${id}/steps/`),
+
+    addStep: (id: string, data: {
+      order: number
+      delay_minutes: number
+      action: string
+      webhook?: string | null
+      user?: string | null
+      target_severity?: string | null
+    }) =>
+      client.post<EscalationStep>(`/escalation-policies/${id}/steps/`, data),
+
+    removeStep: (policyId: string, stepId: string) =>
+      client.delete(`/escalation-policies/${policyId}/steps/${stepId}/`),
+  },
+
+  workflows: {
+    list: () =>
+      client.get<PaginatedResponse<IncidentWorkflowRule>>('/incident-workflows'),
+
+    get: (id: string) =>
+      client.get<IncidentWorkflowRule>(`/incident-workflows/${id}`),
+
+    create: (data: {
+      name: string
+      trigger: string
+      conditions?: Record<string, unknown>
+      actions: Record<string, unknown>[]
+      is_active?: boolean
+    }) =>
+      client.post<IncidentWorkflowRule>('/incident-workflows', data),
+
+    update: (id: string, data: Partial<IncidentWorkflowRule>) =>
+      client.put<IncidentWorkflowRule>(`/incident-workflows/${id}`, data),
+
+    delete: (id: string) =>
+      client.delete(`/incident-workflows/${id}`),
   },
 }

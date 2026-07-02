@@ -48,7 +48,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-            aria-label="Fermer"
+            aria-label="Close"
           >
             <IconX size={16} />
           </button>

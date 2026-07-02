@@ -30,12 +30,17 @@ import {
   IconMonitor,
 } from '@/components/ui/Icons'
 
-const TYPE_ICON: Record<MonitorType, React.ReactNode> = {
-  api:       <IconServer size={14} className="text-brand-400" />,
-  website:   <IconWifi size={14} className="text-blue-400" />,
-  tcp:       <IconLink size={14} className="text-violet-400" />,
-  heartbeat: <IconHeart size={14} className="text-pink-400" />,
-  ping:      <IconActivity size={14} className="text-emerald-400" />,
+const TYPE_ICON: Partial<Record<MonitorType, React.ReactNode>> = {
+  api:           <IconServer size={14} className="text-brand-400" />,
+  website:       <IconWifi size={14} className="text-blue-400" />,
+  tcp:           <IconLink size={14} className="text-violet-400" />,
+  heartbeat:     <IconHeart size={14} className="text-pink-400" />,
+  ping:          <IconActivity size={14} className="text-emerald-400" />,
+  dns:           <IconWifi size={14} className="text-cyan-400" />,
+  udp:           <IconLink size={14} className="text-orange-400" />,
+  ssl:           <IconServer size={14} className="text-amber-400" />,
+  multi_step_api:<IconServer size={14} className="text-indigo-400" />,
+  journey:       <IconActivity size={14} className="text-purple-400" />,
 }
 
 export default function MonitorsPage() {
@@ -70,11 +75,11 @@ export default function MonitorsPage() {
     <PageShell>
       <PageHeader
         title="Monitors"
-        subtitle={`${data?.count ?? 0} monitor${(data?.count ?? 0) !== 1 ? 's' : ''} configuré${(data?.count ?? 0) !== 1 ? 's' : ''}`}
+        subtitle={`${data?.count ?? 0} monitor${(data?.count ?? 0) !== 1 ? 's' : ''} configured`}
         actions={
           <button onClick={() => setShowCreate(true)} className="btn-primary w-full sm:w-auto">
             <IconPlus size={16} />
-            Nouveau monitor
+            New monitor
           </button>
         }
       />
@@ -87,7 +92,7 @@ export default function MonitorsPage() {
           </span>
           <input
             type="text"
-            placeholder="Rechercher un monitor…"
+            placeholder="Search monitors…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field pl-9"
@@ -98,28 +103,33 @@ export default function MonitorsPage() {
           onChange={e => setTypeFilter(e.target.value)}
           className="input-field w-full sm:w-auto sm:min-w-[160px]"
         >
-          <option value="">Tous les types</option>
-          <option value="api">API</option>
+          <option value="">All types</option>
           <option value="website">Website</option>
+          <option value="api">API</option>
           <option value="tcp">TCP</option>
-          <option value="heartbeat">Heartbeat</option>
+          <option value="udp">UDP</option>
+          <option value="dns">DNS</option>
+          <option value="ssl">SSL</option>
           <option value="ping">Ping</option>
+          <option value="multi_step_api">Multi-step API</option>
+          <option value="journey">User Journey</option>
+          <option value="heartbeat">Heartbeat</option>
         </select>
         <TeamFilter value={teamFilter} onChange={setTeamFilter} />
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <Spinner label="Chargement…" />
+        <Spinner label="Loading…" />
       ) : monitors.length === 0 ? (
         <EmptyState
           icon={<IconMonitor size={24} />}
-          title="Aucun monitor"
-          description="Créez votre premier monitor pour surveiller vos services en temps réel."
+          title="No monitors"
+          description="Create your first monitor to watch your services in real time."
           action={
             <button onClick={() => setShowCreate(true)} className="btn-primary">
               <IconPlus size={16} />
-              Créer un monitor
+              Create monitor
             </button>
           }
         />
@@ -129,11 +139,11 @@ export default function MonitorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <th className="table-th">Nom</th>
+                  <th className="table-th">Name</th>
                   <th className="table-th hidden sm:table-cell">Type</th>
-                  <th className="table-th hidden md:table-cell">Équipe</th>
-                  <th className="table-th">Statut</th>
-                  <th className="table-th hidden md:table-cell">Dernier check</th>
+                  <th className="table-th hidden md:table-cell">Team</th>
+                  <th className="table-th">Status</th>
+                  <th className="table-th hidden md:table-cell">Last check</th>
                   <th className="table-th hidden lg:table-cell">URL</th>
                   <th className="table-th text-right">Actions</th>
                 </tr>
@@ -150,14 +160,14 @@ export default function MonitorsPage() {
                         <span className="truncate max-w-[140px] sm:max-w-none">{m.name}</span>
                         {m.is_paused && (
                           <span className="hidden sm:inline text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-normal">
-                            en pause
+                            paused
                           </span>
                         )}
                       </Link>
                     </td>
                     <td className="table-td hidden sm:table-cell">
                       <span className="flex items-center gap-1.5 text-gray-500 capitalize">
-                        {TYPE_ICON[m.type]}
+                        {TYPE_ICON[m.type] ?? <IconMonitor size={14} className="text-gray-400" />}
                         {m.type}
                       </span>
                     </td>
@@ -178,10 +188,10 @@ export default function MonitorsPage() {
                         <button
                           onClick={() => pauseMut.mutate({ id: m.id, paused: m.is_paused })}
                           className="btn-ghost py-1.5 px-2 text-xs"
-                          title={m.is_paused ? 'Reprendre' : 'Mettre en pause'}
+                          title={m.is_paused ? 'Resume' : 'Pause'}
                         >
                           {m.is_paused
-                            ? <><IconPlay size={13} /><span className="hidden sm:inline">Reprendre</span></>
+                            ? <><IconPlay size={13} /><span className="hidden sm:inline">Resume</span></>
                             : <><IconPause size={13} /><span className="hidden sm:inline">Pause</span></>
                           }
                         </button>
@@ -189,16 +199,16 @@ export default function MonitorsPage() {
                           to={`/monitors/${m.id}`}
                           className="btn-ghost py-1.5 px-2 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50"
                         >
-                          <span className="hidden sm:inline">Détails</span>
+                          <span className="hidden sm:inline">Details</span>
                           <IconArrowRight size={13} className="sm:hidden" />
                         </Link>
                         <button
-                          onClick={() => { if (confirm('Supprimer ce monitor ?')) deleteMut.mutate(m.id) }}
+                          onClick={() => { if (confirm('Delete this monitor?')) deleteMut.mutate(m.id) }}
                           className="btn-danger"
-                          title="Supprimer"
+                          title="Delete"
                         >
                           <IconTrash2 size={13} />
-                          <span className="hidden sm:inline">Supprimer</span>
+                          <span className="hidden sm:inline">Delete</span>
                         </button>
                       </div>
                     </td>
@@ -210,7 +220,7 @@ export default function MonitorsPage() {
         </div>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau monitor" size="lg">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New monitor" size="lg">
         <MonitorForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['monitors'] }) }} />
       </Modal>
     </PageShell>

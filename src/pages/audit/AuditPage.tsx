@@ -10,9 +10,9 @@ import { formatDate } from '@/utils/format'
 const PAGE_SIZE = 30
 const ACTOR_TYPES = ['', 'user', 'api_key', 'system'] as const
 const ACTOR_TYPE_LABELS: Record<string, string> = {
-  user: 'Utilisateur',
-  api_key: 'Clé API',
-  system: 'Automatique',
+  user: 'User',
+  api_key: 'API key',
+  system: 'Automated',
   scim: 'SCIM',
 }
 const RESOURCE_TYPES = ['', 'incident', 'monitor', 'role', 'team', 'project', 'webhook', 'api_key', 'user']
@@ -67,12 +67,12 @@ export default function AuditPage() {
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Journal d'audit"
-        subtitle="Log immuable en chaîne de hash SHA-256"
+        title="Audit log"
+        subtitle="Immutable SHA-256 hash chain log"
         actions={
           <>
             <Button variant="secondary" onClick={handleVerify} disabled={verifying}>
-              {verifying ? 'Vérification…' : 'Vérifier intégrité'}
+              {verifying ? 'Verifying…' : 'Verify integrity'}
             </Button>
             <Button variant="secondary" onClick={() => handleExport('csv')}>↓ CSV</Button>
             <Button variant="secondary" onClick={() => handleExport('jsonl')}>↓ JSONL</Button>
@@ -85,8 +85,8 @@ export default function AuditPage() {
           <span>{verifyResult.valid ? '✅' : '❌'}</span>
           <span className="text-sm font-medium">
             {verifyResult.valid
-              ? `Chaîne intègre — ${verifyResult.checked} entrées vérifiées`
-              : `Intégrité compromise — ${verifyResult.checked} entrées vérifiées`}
+              ? `Chain intact — ${verifyResult.checked} entries verified`
+              : `Integrity compromised — ${verifyResult.checked} entries verified`}
           </span>
           <button onClick={() => setVerifyResult(null)} className="ml-auto btn-ghost btn-sm">×</button>
         </div>
@@ -104,14 +104,14 @@ export default function AuditPage() {
           onChange={e => { setFilters(f => ({ ...f, resource_type: e.target.value })); setPage(1) }}
           className="input-field"
         >
-          {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t || 'Toutes les ressources'}</option>)}
+          {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t || 'All resources'}</option>)}
         </select>
         <select
           value={filters.actor_type}
           onChange={e => { setFilters(f => ({ ...f, actor_type: e.target.value })); setPage(1) }}
           className="input-field"
         >
-          {ACTOR_TYPES.map(t => <option key={t} value={t}>{t ? actorTypeLabel(t) : 'Tous les acteurs'}</option>)}
+          {ACTOR_TYPES.map(t => <option key={t} value={t}>{t ? actorTypeLabel(t) : 'All actors'}</option>)}
         </select>
         <input
           type="date"
@@ -129,12 +129,12 @@ export default function AuditPage() {
 
       <div className="table-wrap">
         {isLoading ? (
-          <Spinner label="Chargement…" />
+          <Spinner label="Loading…" />
         ) : entries.length === 0 ? (
           <p className="text-center text-gray-400 py-16 text-sm px-4">
             {isError
-              ? 'Impossible de charger le journal d\'audit.'
-              : 'Aucune entrée dans le journal. Les actions apparaîtront ici.'}
+              ? 'Unable to load the audit log.'
+              : 'No entries in the log yet. Actions will appear here.'}
           </p>
         ) : (
           <>
@@ -176,7 +176,7 @@ export default function AuditPage() {
                       </td>
                       <td
                         className="table-td text-gray-400 font-mono text-xs"
-                        title={entry.ip_address ? undefined : entry.actor_type === 'system' ? 'Action automatique — pas d\'IP' : 'IP non enregistrée'}
+                        title={entry.ip_address ? undefined : entry.actor_type === 'system' ? 'Automated action — no IP' : 'IP not recorded'}
                       >
                         {entry.ip_address ?? '—'}
                       </td>
@@ -188,21 +188,21 @@ export default function AuditPage() {
             <div className="pagination-bar">
               <span className="text-sm text-gray-500">
                 {totalCount != null
-                  ? `${totalCount} entrée${totalCount > 1 ? 's' : ''} au total`
-                  : `${entries.length} entrée${entries.length > 1 ? 's' : ''} affichée${entries.length > 1 ? 's' : ''}`}
+                  ? `${totalCount} entr${totalCount > 1 ? 'ies' : 'y'} total`
+                  : `${entries.length} entr${entries.length > 1 ? 'ies' : 'y'} shown`}
                 {totalPages != null && (
-                  <span className="text-gray-400"> · {PAGE_SIZE} par page</span>
+                  <span className="text-gray-400"> · {PAGE_SIZE} per page</span>
                 )}
               </span>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!hasPrevPage}>
-                  ← Préc.
+                  ← Prev
                 </Button>
                 <span className="text-sm text-gray-600 min-w-[7rem] text-center">
                   {totalPages != null ? `Page ${page} / ${totalPages}` : `Page ${page}`}
                 </span>
                 <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={!hasNextPage}>
-                  Suiv. →
+                  Next →
                 </Button>
               </div>
             </div>

@@ -17,6 +17,7 @@ import {
   IconZap,
   IconRefreshCw,
   IconTrendingUp,
+  IconGlobe,
 } from '@/components/ui/Icons'
 import { PageShell } from '@/components/ui/PageShell'
 
@@ -53,7 +54,7 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: 'Monitors actifs',
+      label: 'Active monitors',
       value: monitors?.count ?? '—',
       icon: IconActivity,
       color: 'text-brand-600',
@@ -62,7 +63,7 @@ export default function DashboardPage() {
       href: '/monitors',
     },
     {
-      label: 'Opérationnels',
+      label: 'Operational',
       value: operational || '—',
       icon: IconCheckCircle,
       color: 'text-emerald-600',
@@ -71,7 +72,7 @@ export default function DashboardPage() {
       href: '/monitors',
     },
     {
-      label: 'Incidents ouverts',
+      label: 'Open incidents',
       value: openIncidents || '—',
       icon: IconAlertTriangle,
       color: openIncidents > 0 ? 'text-red-500' : 'text-gray-400',
@@ -80,7 +81,7 @@ export default function DashboardPage() {
       href: '/incidents',
     },
     {
-      label: 'Maintenances planifiées',
+      label: 'Scheduled maintenance',
       value: maintenanceList.length || '—',
       icon: IconCalendar,
       color: 'text-amber-600',
@@ -94,17 +95,17 @@ export default function DashboardPage() {
     operational: {
       bg: 'bg-emerald-50 border-emerald-200',
       text: 'text-emerald-700',
-      label: 'Tous les services sont opérationnels',
+      label: 'All services are operational',
     },
     degraded: {
       bg: 'bg-red-50 border-red-200',
       text: 'text-red-700',
-      label: `${offline} service${offline > 1 ? 's' : ''} en panne ou dégradé${offline > 1 ? 's' : ''}`,
+      label: `${offline} service${offline > 1 ? 's' : ''} down or degraded`,
     },
     disabled: {
       bg: 'bg-gray-50 border-gray-200',
       text: 'text-gray-500',
-      label: 'Aucun monitor configuré',
+      label: 'No monitors configured',
     },
   }
 
@@ -117,13 +118,13 @@ export default function DashboardPage() {
       <div className="mb-7 flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Bonjour, {user?.first_name}
+            Hello, {user?.first_name}
           </h2>
-          <p className="text-gray-400 text-sm mt-1">Vue d'ensemble de votre infrastructure</p>
+          <p className="text-gray-400 text-sm mt-1">Overview of your infrastructure</p>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
           <IconRefreshCw size={13} className="text-gray-400" />
-          Mise à jour en temps réel
+          Real-time updates
         </div>
       </div>
 
@@ -132,7 +133,7 @@ export default function DashboardPage() {
         <StatusDot status={overallStatus} />
         <span className={`font-medium text-sm ${sc.text}`}>{sc.label}</span>
         {overallStatus === 'operational' && (
-          <span className="ml-auto text-xs text-emerald-600 font-medium">100% opérationnel</span>
+          <span className="ml-auto text-xs text-emerald-600 font-medium">100% operational</span>
         )}
       </div>
 
@@ -156,6 +157,27 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Essentials — mirrors oneuptime.com product grid */}
+      <div className="mb-8">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Essentials</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { to: '/status-pages', label: 'Status Pages', desc: 'Public trust & uptime', Icon: IconGlobe },
+            { to: '/incidents', label: 'Incidents', desc: 'Detect & resolve fast', Icon: IconAlertTriangle },
+            { to: '/monitors', label: 'Monitoring', desc: 'Monitor any endpoint', Icon: IconActivity },
+            { to: '/maintenance', label: 'Maintenance', desc: 'Plan downtime windows', Icon: IconCalendar },
+          ].map(({ to, label, desc, Icon }) => (
+            <Link key={to} to={to} className="feature-card group">
+              <div className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center mb-3 group-hover:bg-brand-100 transition-colors">
+                <Icon size={17} className="text-brand-600" />
+              </div>
+              <p className="text-sm font-semibold text-slate-900">{label}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Bottom panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -164,10 +186,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <IconMonitor size={15} className="text-brand-500" />
-              <h3 className="section-title">Monitors récents</h3>
+              <h3 className="section-title">Recent monitors</h3>
             </div>
             <Link to="/monitors" className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1 transition-colors">
-              Tout voir <IconArrowRight size={12} />
+              View all <IconArrowRight size={12} />
             </Link>
           </div>
           {monitorList.length === 0 ? (
@@ -175,7 +197,7 @@ export default function DashboardPage() {
               <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center mb-3">
                 <IconActivity size={18} className="text-brand-400" />
               </div>
-              <p className="text-sm text-gray-400">Aucun monitor configuré</p>
+              <p className="text-sm text-gray-400">No monitors configured</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -202,10 +224,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <IconZap size={15} className="text-amber-500" />
-              <h3 className="section-title">Incidents récents</h3>
+              <h3 className="section-title">Recent incidents</h3>
             </div>
             <Link to="/incidents" className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1 transition-colors">
-              Tout voir <IconArrowRight size={12} />
+              View all <IconArrowRight size={12} />
             </Link>
           </div>
           {incidentList.length === 0 ? (
@@ -213,7 +235,7 @@ export default function DashboardPage() {
               <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
                 <IconCheckCircle size={18} className="text-emerald-400" />
               </div>
-              <p className="text-sm text-gray-400">Aucun incident récent</p>
+              <p className="text-sm text-gray-400">No recent incidents</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -243,11 +265,11 @@ export default function DashboardPage() {
       <div className="mt-6 flex flex-wrap gap-3">
         <Link to="/monitors" className="btn-secondary text-xs">
           <IconTrendingUp size={14} />
-          Analyser les performances
+          Analyze performance
         </Link>
         <Link to="/status-pages" className="btn-secondary text-xs">
           <IconActivity size={14} />
-          Pages de statut
+          Status pages
         </Link>
       </div>
     </PageShell>

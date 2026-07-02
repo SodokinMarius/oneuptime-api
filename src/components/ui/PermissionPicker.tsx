@@ -47,14 +47,14 @@ export function PermissionPicker({ value, onChange, allowWildcard = true }: Perm
             hasWildcard ? 'bg-brand-600 text-white border-brand-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          Toutes les permissions (*)
+          All permissions (*)
         </button>
       )}
 
       {!hasWildcard && (
         <>
           {isLoading ? (
-            <p className="text-sm text-gray-400 py-4 text-center">Chargement des permissions…</p>
+            <p className="text-sm text-gray-400 py-4 text-center">Loading permissions…</p>
           ) : (
             <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-3">
               {Object.entries(grouped).map(([res, perms]) => (
@@ -87,10 +87,10 @@ export function PermissionPicker({ value, onChange, allowWildcard = true }: Perm
               onChange={e => setPermInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
               className="input-field flex-1"
-              placeholder="Wildcard ou permission personnalisée (ex. monitor:*)"
+              placeholder="Wildcard or custom permission (e.g. monitor:*)"
             />
             <button type="button" onClick={addCustom} className="btn-secondary btn-sm shrink-0">
-              Ajouter
+              Add
             </button>
           </div>
         </>
@@ -101,14 +101,14 @@ export function PermissionPicker({ value, onChange, allowWildcard = true }: Perm
           {value.map(p => (
             <span key={p} className="inline-flex items-center gap-1 text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-mono">
               {p}
-              <button type="button" onClick={() => togglePerm(p)} className="hover:text-red-600 ml-0.5" aria-label={`Retirer ${p}`}>×</button>
+              <button type="button" onClick={() => togglePerm(p)} className="hover:text-red-600 ml-0.5" aria-label={`Remove ${p}`}>×</button>
             </span>
           ))}
         </div>
       )}
 
       {hasWildcard && (
-        <p className="text-xs text-gray-500 mt-1">Accès complet à toutes les ressources du projet.</p>
+        <p className="text-xs text-gray-500 mt-1">Full access to all project resources.</p>
       )}
     </div>
   )

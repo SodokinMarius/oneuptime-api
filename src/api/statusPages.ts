@@ -9,6 +9,7 @@ export interface StatusPageResource {
   monitor_group?: string
   monitor_name?: string | null
   monitor_status?: string | null
+  display_status?: string | null
   group_name?: string | null
   display_name: string
   order: number
@@ -28,7 +29,9 @@ export interface Announcement {
 export interface Subscriber {
   id: string
   email: string
+  phone: string
   is_verified: boolean
+  phone_verified: boolean
   subscribed_at: string
 }
 
@@ -111,4 +114,23 @@ export const statusPagesApi = {
     axios.get<PublicStatusPage>(`${API_BASE_URL}/status/${slug}/`, {
       headers: { Accept: 'application/json' },
     }),
+
+  subscribe: (slug: string, data: { email: string; phone?: string }) =>
+    axios.post<{ detail: string }>(`${API_BASE_URL}/status/${slug}/subscribe/`, data, {
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    }),
+
+  verifyEmail: (slug: string, token: string) =>
+    axios.post<{ detail: string }>(
+      `${API_BASE_URL}/status/${slug}/verify-email/`,
+      { token },
+      { headers: { Accept: 'application/json', 'Content-Type': 'application/json' } },
+    ),
+
+  verifyPhone: (slug: string, token: string) =>
+    axios.post<{ detail: string }>(
+      `${API_BASE_URL}/status/${slug}/verify-phone/`,
+      { token },
+      { headers: { Accept: 'application/json', 'Content-Type': 'application/json' } },
+    ),
 }
